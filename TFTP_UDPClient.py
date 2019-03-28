@@ -4,16 +4,17 @@ from socket import socket, AF_INET, SOCK_DGRAM
 import pickle
 import sys
 import struct
+import traceback
 
 
 def write(sock,ip,port,*args,**kwargs):
 
+    print(args[0])
     if(len(args)!=1):
         raise Exception("The number of arguments is not correct")
 
     recieved=False
-    
-    sock.sendto(struct.pack(f"!H{len(args[0])}sB{len('netascii')}sB",2,args[0].encode(),0,b'netascii',0), (ip,port) ) 
+    sock.sendto(struct.pack(f"!H{len(args[0])}sB{len('netascii')}sB",2,args[0],0,b'netascii',0), (ip,port) ) 
     #Enviamos el paquete para empezar a leer del servidor , args[0] es el nombre del archivo de texto que queremos leer
     #! es por el formato de la red
     #H es por un unsigned short de 2 Bytes
@@ -156,6 +157,7 @@ def main(*args,**kwargs):
             functions[arguments[0]](sock,sys.argv[0],sys.argv[1],arguments[1:])
         except Exception:
             print ('error')
+            traceback.print_exc()
         finally:
             sock.close()
 
