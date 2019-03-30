@@ -6,7 +6,7 @@ from socket import *
 
 def read(sock,unpacked_code,port):
     block=0
-    f=open(unpacked_code[1],'rb') #ABRIMOS EL ARCHIVO QUE EL CLIENTE HABIA MANDADO 
+    f=open(unpacked_code[1],'rb') #ABRIMOS EL ARCHIVO QUE EL CLIENTE HABIA MANDADO, Y LO ABRIMOS EN MODO BYTES PARA QUE PUEDA COGER LOS BYTES NECESARIOS
     while True:
         recieve=False
         try:
@@ -14,10 +14,13 @@ def read(sock,unpacked_code,port):
             
             if not recieve: 
                 sent_bytes=f.read(512)
-                sock.sendto(struct.pack(f'=2H{len(sent_bytes)}p',3,block,sent_bytes ('',port))) #MANDAMOS LA ESTRUCTURA DEL LOS DATOS QUE LEEMOS DEL FICHERO
+                sock.sendto(struct.pack(f'=2H{len(sent_bytes)}p',3,block,sent_bytes) ('',port)) #MANDAMOS LA ESTRUCTURA DEL LOS DATOS QUE LEEMOS DEL FICHERO
                 msg, client=sock.recvfrom(512) #EL SERVIDOR RESCIBE EL ACK DEL CLIENTE
+                unpacked_ack=struct.unpack('=2H',msg)
+                print("Block number: "unpacked_ack[1])
             else:
-                sock.sendto(struct.pack(f'=2H{len(sent_bytes)}p',3,block-1,sent_bytes ('',port))) #MANDAMOS DE NUEVO EL PAQUETE PARA QUE LO PUEDA RECIBIR EL CLIENTE
+                block_time=block-1
+                sock.sendto(struct.pack(f'=2H{len(sent_bytes)}p',3,block_time,sent_bytes) ('',port)) #MANDAMOS DE NUEVO EL PAQUETE PARA QUE LO PUEDA RECIBIR EL CLIENTE
         except sock.timeout:
             recieve=True
         except IOError:
@@ -32,13 +35,13 @@ def write(sock,unpacked_code,port):
     block=0
     f=open(unpacked_code[1],'wb')
     sock.sendto(struct.pack('=HB',4,block ('',port)))
-    acknowledgment=False
     while True:
+        acknowledgment=False
         try:
             
             if not acknowledgment:
                 msg,client=sock.recvfrom(516)
-                unpacked_data = struct.unpack(f'Hp{len(msg)-4}s',msg)
+                unpacked_data = struct.unpack(f'=2H{len(msg)-4}s',msg)
                 write(unpacked_data[2])
                 sock.sendto(struct.pack('=HB',4,unpacked_data[2]) ('',port))
             else:
@@ -55,14 +58,17 @@ def write(sock,unpacked_code,port):
 def main(*args,**kwargs):
 
     sock = socket(AF_INET, SOCK_DGRAM)
-    sock.settimeout(20)
-    sock.bind(('',int(sys.argv[1])))
+    sock.settimeout(10)
+    port=int(sys.argv[1])
+    sock.bind(('',port))
     msg, client =sock.recvfrom(516) #RECIBIMOS EL PAQUETE QUE EL SERVIDOR MANDA, LA CANTIDAD DE DATOS TIENE QUE SER EL APROPIADO PARA QUE NO HAYA RESTRICCIONES
-    unpacked_code = struct.unpack(f"!H{len(msg)-12}sB{len('netascii')}sB",msg)
+    unpacked_code = struct.unpack(f"=!H{len(msg)-12}sB{len('netascii')}sB",msg)
     if(unpacked_code[0]==1):
-        read(sock,unpacked_code,int(sys.argv[1]))
+        read(sock,unpacked_code,port)
     if(unpacked_code[0]==2):
-        write(sock,unpacked_code,int(sys.argv[1]))
+        write(sock,unpacked_code,port)
+    else:
+        pass
 
 
 if __name__ == '__main__':
@@ -70,4 +76,3 @@ if __name__ == '__main__':
       sys.exit(main())
     except KeyboardInterrupt:
       pass
-
