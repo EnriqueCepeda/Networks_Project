@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from socket import socket, AF_INET, SOCK_DGRAM
-import pickle
 import sys
 import struct
 import traceback
@@ -9,13 +8,13 @@ import traceback
 
 def write(sock,*args,**kwargs):
 
-    print(args)
-    ip=args[0]
-    port=args[1]
-    file_name=args[2]
+
+    file_name=args[0]
+    ip=args[2]
+    port=args[3]
 
 
-    if(len(args)!=1):
+    if(len(args)!=4):
         raise Exception("The number of arguments is not correct")
 
     recieved=False
@@ -56,7 +55,7 @@ def write(sock,*args,**kwargs):
                         #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
 
                         #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
-                        leftUnpackedMsg= struct.unpack(f'=H{len(leftUnpackedMsg[1])-3}sB', code_message[1])
+                        leftUnpackedMsg= struct.unpack(f'=H{len(code_message[1])-3}sB', code_message[1])
                         print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1]}")
                         break
                         
@@ -77,12 +76,11 @@ def write(sock,*args,**kwargs):
         
 def read(sock,*args,**kwargs):
 
+    file_name=args[0]
+    ip=args[2]
+    port=args[3]
 
-    ip=args[0]
-    port=args[1]
-    file_name=args[2]
-
-    if(len(args)!=1):
+    if(len(args)!=4):
         raise Exception("The number of arguments is not correct")
 
     acknowledgment=False
@@ -151,13 +149,12 @@ def main(*args,**kwargs):
 
     sock = socket(AF_INET, SOCK_DGRAM)
     sock.settimeout(5)
+
     while True:
         try:
             command = input('TFTP@UDP> ').lower()
-            arguments = command.split()
-            print(sys.argv[1:])
-            #sys.argv[0] es la ip // sys.argv[1] es el puerto //argumentos depende de la función que querramos invocar, cogemos apartir del 1 porque el 0 es el nombre del comando, READ, WRITE
-            functions[arguments[0]](sock,sys.argv[1:],arguments[1])
+            arguments = command.split() + sys.argv
+            functions[arguments[0]](sock,*arguments[1:])
         except Exception:
             traceback.print_exc()
 
