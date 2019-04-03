@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from socket import socket, AF_INET, SOCK_DGRAM
+from socket import socket, AF_INET, SOCK_STREAM
 import pickle
 import sys
 import struct
@@ -29,34 +29,34 @@ def write(sock,*args,**kwargs):
 
         while True:
 
-            try:
+            
                     
                     #Podemos recibir una RRQ/ERR o normalmente un ACK de tamaño 4 que es el tamaño del acknowledgmente que serían 2 bytes del codigo y otros 2 del codigo
-                msg = sock.recv(516)
+            msg = sock.recv(516)
 
-                code_message = struct.unpack(f'=H{len(msg)-2}s', msg) #Extraemos todo el paquete del servidor dividiendolo en codigo de mensaje y lo demás para primero analizar el codigo
+            code_message = struct.unpack(f'=H{len(msg)-2}s', msg) #Extraemos todo el paquete del servidor dividiendolo en codigo de mensaje y lo demás para primero analizar el codigo
 
                     #En este caso el codigo sería el correcto, el codigo 4, que significa que hemos recibido el OK del server, un acknowledgment
-                if(code_message[0]==4):
+            if(code_message[0]==4):
 
-                    sent_bytes=f.read(512)
+                sent_bytes=f.read(512)
 
-                    leftUnpackedMsg = struct.unpack('=H', code_message[1])
+                leftUnpackedMsg = struct.unpack('=H', code_message[1])
                         
                         #EL PRIMER MENSAJE DE ACK DEL SERVER AL CLIENTE TIENE QUE TENER BLOQUE 0
-                    sent = sock.send(struct.pack(f'=2H{len(sent_bytes)}', 4 , leftUnpackedMsg[1]+1 ,sent_bytes))   
+                sent = sock.send(struct.pack(f'=2H{len(sent_bytes)}', 4 , leftUnpackedMsg[1]+1 ,sent_bytes))   
 
 
 
                       
 
-                else:
+            else:
                         #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
 
                         #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
-                    leftUnpackedMsg= struct.unpack(f'=H{len(leftUnpackedMsg[1])-3}sB', code_message[1])
-                    print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1]}")
-                    break
+                leftUnpackedMsg= struct.unpack(f'=H{len(leftUnpackedMsg[1])-3}sB', code_message[1])
+                print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1]}")
+                break
                                              
                  
 def read(sock,*args,**kwargs):
@@ -129,7 +129,7 @@ functions={
 def main(*args,**kwargs):
 
     sock = socket(AF_INET, SOCK_STREAM)
-    sock.accept(int(sys.argv[1]),int(sys.argv[2]))
+    sock.connect((sys.argv[1],int(sys.argv[2])))
     while True:
         try:
             command = input('TFTP@TCP> ').lower()
