@@ -152,9 +152,11 @@ def main(*args,**kwargs):
 
     while True:
         try:
+            
             command = input('TFTP@UDP> ').lower()
             arguments = command.split() + sys.argv
             functions[arguments[0]](sock,*arguments[1:])
+
         except Exception:
             traceback.print_exc()
 
