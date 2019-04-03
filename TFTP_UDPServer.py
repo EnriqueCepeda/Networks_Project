@@ -4,7 +4,7 @@ import pickle
 import sys
 from socket import *
 
-def read(sock,unpacked_code,port):
+def read(sock,unpacked_code,port,client):
     block=0
     f=open(unpacked_code[1],'rb') #ABRIMOS EL ARCHIVO QUE EL CLIENTE HABIA MANDADO, Y LO ABRIMOS EN MODO BYTES PARA QUE PUEDA COGER LOS BYTES NECESARIOS
     while True:
@@ -13,14 +13,16 @@ def read(sock,unpacked_code,port):
             block=block+1 #incrementamos el block number por cada mensaje que el servidor envía
             
             if not recieve: 
-                sent_bytes=f.read(512)
-                sock.sendto(struct.pack(f'=2H{len(sent_bytes)}p',3,block,sent_bytes) ('',port)) #MANDAMOS LA ESTRUCTURA DEL LOS DATOS QUE LEEMOS DEL FICHERO
-                msg, client=sock.recvfrom(512) #EL SERVIDOR RESCIBE EL ACK DEL CLIENTE
+                sent_bytes=f.read(4096) #SON 512*8(BITS)
+                print(type(sent_bytes))
+                message = struct.pack(f'!2H{len(sent_bytes)}s',3,block,sent_bytes)
+                sock.sendto(message, client) #MANDAMOS LA ESTRUCTURA DEL LOS DATOS QUE LEEMOS DEL FICHERO
+                msg, client1=sock.recvfrom(512) #EL SERVIDOR RESCIBE EL ACK DEL CLIENTE
                 unpacked_ack=struct.unpack('=2H',msg)
-                print("Block number: "unpacked_ack[1])
+                
             else:
                 block_time=block-1
-                sock.sendto(struct.pack(f'=2H{len(sent_bytes)}p',3,block_time,sent_bytes) ('',port)) #MANDAMOS DE NUEVO EL PAQUETE PARA QUE LO PUEDA RECIBIR EL CLIENTE
+                sock.sendto(struct.pack(f'=2H{len(sent_bytes)}s',3,block_time,sent_bytes) ('',port)) #MANDAMOS DE NUEVO EL PAQUETE PARA QUE LO PUEDA RECIBIR EL CLIENTE
         except sock.timeout:
             recieve=True
         except IOError:
@@ -31,7 +33,7 @@ def read(sock,unpacked_code,port):
         finally:
             sock.close()
 
-def write(sock,unpacked_code,port):
+def write(sock,unpacked_code,port,client):
     block=0
     f=open(unpacked_code[1],'wb')
     sock.sendto(struct.pack('=HB',4,block ('',port)))
@@ -62,11 +64,11 @@ def main(*args,**kwargs):
     port=int(sys.argv[1])
     sock.bind(('',port))
     msg, client =sock.recvfrom(516) #RECIBIMOS EL PAQUETE QUE EL SERVIDOR MANDA, LA CANTIDAD DE DATOS TIENE QUE SER EL APROPIADO PARA QUE NO HAYA RESTRICCIONES
-    unpacked_code = struct.unpack(f"=!H{len(msg)-12}sB{len('netascii')}sB",msg)
+    unpacked_code = struct.unpack(f"!H{len(msg)-12}sB{len('netascii')}sB",msg)
     if(unpacked_code[0]==1):
-        read(sock,unpacked_code,port)
+        read(sock,unpacked_code,port,client)
     if(unpacked_code[0]==2):
-        write(sock,unpacked_code,port)
+        write(sock,unpacked_code,port,client)
     else:
         pass
 
