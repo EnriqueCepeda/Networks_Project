@@ -18,13 +18,17 @@ def write(sock,*args,**kwargs):
         raise Exception("The number of arguments is not correct")
 
     recieved=False
+    last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",2,str.encode(file_name),0,b'netascii',0)
 
-    sock.sendto(struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",2,str.encode(file_name),0,b'netascii',0), (ip,int(port)) ) 
     #Enviamos el paquete para empezar a leer del servidor , args[0] es el nombre del archivo de texto que queremos leer
     #! es por el formato de la red
     #H es por un unsigned short de 2 Bytes
     #s es por una cadena de caracteres cuya longitud esta definida por la propia cadena en el formato
     #B es por un unsigned char que ocupa 1 Byte
+
+    sock.sendto(last_packet, (ip,int(port)) ) 
+
+    
 
 
     with open(file_name,'w',) as f:
@@ -48,10 +52,13 @@ def write(sock,*args,**kwargs):
                         leftUnpackedMsg = struct.unpack('=H', code_message[1])
                         
                         #EL PRIMER MENSAJE DE ACK DEL SERVER AL CLIENTE TIENE QUE TENER BLOQUE 0
-                        sock.sendto(struct.pack(f'!2H{len(sent_bytes)}', 4 , leftUnpackedMsg[1]+1 ,sent_bytes) , cliente)   
+                        last_packet = struct.pack(f'!2H{len(sent_bytes)}', 4 , leftUnpackedMsg[1]+1 ,sent_bytes)
+
+                        sock.sendto(last_packet, cliente)   
                     
                     else:
                         #TODAVIA NO VA ESTA PARTE
+
                         #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
 
                         #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
@@ -61,7 +68,7 @@ def write(sock,*args,**kwargs):
                         
                         
                 else:
-                    sock.sendto(struct.pack(f'!2H{len(sent_bytes)}', 4 , leftUnpackedMsg[1]+1 ,sent_bytes) , cliente )
+                    sock.sendto(last_packet, cliente )
                     recieved=False
                         
                 
@@ -85,8 +92,8 @@ def read(sock,*args,**kwargs):
 
     acknowledgment=False
 
-    estructura=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",1,str.encode(file_name),0,b'netascii',0)
-    sock.sendto(estructura, (ip ,int(port)))
+    last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",1,str.encode(file_name),0,b'netascii',0)
+    sock.sendto(last_packet, (ip ,int(port)))
 
     with open(args[0],'w',) as f:
 
@@ -109,8 +116,9 @@ def read(sock,*args,**kwargs):
                         #Escribimos en un archivo que se llama igual que el archivo del server lo que recibimos de el
                         f.write(leftUnpackedMsg[1].decode("utf-8"))
                         
+                        last_packet = struct.pack('!2H', 4 , leftUnpackedMsg[0]) 
                         #Enviamos codigo 4 de ACK y el numero de bloque al que corresponde el acknowledgment
-                        sock.sendto(struct.pack('!2H', 4 , leftUnpackedMsg[0]) , cliente )   #ACK
+                        sock.sendto(last_packet , cliente )   #ACK
 
                     else:
                         #TODAVIA NO VA ESTA PARTE
@@ -121,11 +129,11 @@ def read(sock,*args,**kwargs):
                         break
 
                 else:
-                    sock.sendto(struct.pack('!2H', 4 , leftUnpackedMsg[0]), cliente )   #ACK
+                    sock.sendto(last_packet, cliente )   #ACK
                     acknowledgment=False
                         
                 
-            except sock.timeout: #pendiente que sea la excepción socket.timeout
+            except sock: #pendiente que sea la excepción socket.timeout
                 acknowledgment=True
 
             else:
