@@ -50,24 +50,23 @@ def write(sock,*args,**kwargs):
                         leftUnpackedMsg = struct.unpack('=H', code_message[1])
                         
                         #EL PRIMER MENSAJE DE ACK DEL SERVER AL CLIENTE TIENE QUE TENER BLOQUE 0
-                        last_packet = struct.pack(f'!2H{len(sent_bytes)}', 4 , leftUnpackedMsg[1]+1 ,sent_bytes)
+                        last_packet = struct.pack(f'!2H{len(sent_bytes)}s', 4 , leftUnpackedMsg[1]+1 ,sent_bytes)
 
                         sock.sendto(last_packet, cliente)   
                     
                     else:
-                        #TODAVIA NO VA ESTA PARTE
 
                         #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
 
                         #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
                         leftUnpackedMsg= struct.unpack(f'=H{len(code_message[1])-3}sB', code_message[1])
 
-                        print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1]}")
+                        print(f"Error number:{leftUnpackedMsg[0]}  Message:{leftUnpackedMsg[1].decode()}")
                         break
                         
                         
                 else:
-                    sock.sendto(last_packet,(ip,int(port)) )
+                    sock.sendto(last_packet,(ip,int(port)))
                     recieved=False
                         
                 
@@ -126,7 +125,7 @@ def read(sock,*args,**kwargs):
                         #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
                         #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
                         leftUnpackedMsg= struct.unpack(f'=H{len(leftUnpackedMsg[1])-3}sB', code_message[1])
-                        print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1]}")
+                        print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1].decode()}")
                         break
 
                 else:
