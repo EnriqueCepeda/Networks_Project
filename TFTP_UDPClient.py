@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from socket import socket, AF_INET, SOCK_DGRAM
+import socket
 import sys
 import struct
 import traceback
@@ -8,14 +8,12 @@ import traceback
 
 def write(sock,*args,**kwargs):
 
+    if(len(args)!=5):
+        raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
 
     file_name=args[0]
     ip=args[2]
-    port=args[3]
-
-
-    if(len(args)!=4):
-        raise Exception("The number of arguments is not correct")
+    port=args[4]
 
     recieved=False
     last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",2,str.encode(file_name),0,b'netascii',0)
@@ -63,17 +61,19 @@ def write(sock,*args,**kwargs):
 
                         #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
                         leftUnpackedMsg= struct.unpack(f'=H{len(code_message[1])-3}sB', code_message[1])
+
                         print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1]}")
                         break
                         
                         
                 else:
-                    sock.sendto(last_packet, cliente )
+                    sock.sendto(last_packet,(ip,int(port)) )
                     recieved=False
                         
                 
-            except sock.timeout: #pendiente que sea la excepción socket.timeout
+            except socket.error as socketerror: #pendiente que sea la excepción socket.timeout
                 recieved=True
+                print(socketerror.strerror)
 
             else:
                 if(len(sent_bytes) < 512 ):
@@ -83,13 +83,14 @@ def write(sock,*args,**kwargs):
         
 def read(sock,*args,**kwargs):
 
+
+    if(len(args)!=5):
+        raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
+
     file_name=args[0]
     ip=args[2]
-    port=args[3]
-
-    if(len(args)!=4):
-        raise Exception("The number of arguments is not correct")
-
+    port=args[4]
+   
     acknowledgment=False
 
     last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",1,str.encode(file_name),0,b'netascii',0)
@@ -129,12 +130,13 @@ def read(sock,*args,**kwargs):
                         break
 
                 else:
-                    sock.sendto(last_packet, cliente )   #ACK
+                    sock.sendto(last_packet, (ip,int(port)) )   #ACK
                     acknowledgment=False
                         
                 
-            except sock: #pendiente que sea la excepción socket.timeout
+            except socket.error as socketerror: 
                 acknowledgment=True
+                print(socketerror.strerror)
 
             else:
                 if(struct.calcsize(msg) < 516 ):
@@ -144,8 +146,7 @@ def read(sock,*args,**kwargs):
 
 
 def end_program(sock,*args,**kwargs):
-    sock.close()
-    raise SystemError("Bye,good to see you")
+    raise KeyboardInterrupt("Bye,good to see you")
 
 functions={
     "quit":end_program,
@@ -155,18 +156,20 @@ functions={
 
 def main(*args,**kwargs):
 
-    sock = socket(AF_INET, SOCK_DGRAM)
-    sock.settimeout(5)
+    if(sys.argv[1]!='-s'or sys.argv[3]!='-p'):
+            raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
 
-    while True:
-        try:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+
+        timeval = struct.pack('LL',0,999999)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
+
+        while True:
             
             command = input('TFTP@UDP> ').lower()
-            arguments = command.split() + sys.argv
+            arguments = command.split() + sys.argv[1:]
             functions[arguments[0]](sock,*arguments[1:])
 
-        except Exception:
-            traceback.print_exc()
 
 
         
@@ -176,3 +179,5 @@ if __name__ == '__main__':
         sys.exit(main())
     except KeyboardInterrupt:
         pass
+    except Exception:
+        traceback.print_exc()
