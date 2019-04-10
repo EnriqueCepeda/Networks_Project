@@ -8,41 +8,7 @@ import io
 from _thread import *
 import time
 from threading import *
-
-
-def read(sock,unpacked_code,client):
-    block=0
-    try:
-        
-        with open (unpacked_code[1].decode(),'r') as readfile: 
-           #Abrimos el archivo que hemos indicado en el cliente     
-            while True:    
-                                    
-                                       
-                sent_bytes=readfile.read(512)  
-                    #Leemos los archivo del fichero    
-                #if not sent_bytes:
-                #    break        
-                        
-                last_packet = struct.pack(f'!2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
-                    #Este paquete contiene el codigo, el bloque y los datos necesarios   
-                block=block+1
-                        
-                sock.send(last_packet) #MANDAMOS LA ESTRUCTURA DEL LOS DATOS QUE LEEMOS DEL FICHERO
-                        
-                                             
-            
-            
-    except OSError:
-        message='File Not Found'
-        
-        error_packet=struct.pack(f'=2H{len(message)-5}sB',5,1,str.encode(message),0)
-        
-        sock.send(error_packet)
-
-        sock.close()
-    
-                   
+                  
 
             
 
@@ -91,11 +57,35 @@ def client_handle(child_sock,client,n):
     print("Client conected: ",n,client)
     msg =child_sock.recv(516) #RECIBIMOS EL PAQUETE QUE EL SERVIDOR MANDA, LA CANTIDAD DE DATOS TIENE QUE SER EL APROPIADO PARA QUE NO HAYA RESTRICCIONES
     unpacked_code = struct.unpack(f"!H{len(msg)-12}sB{len('netascii')}sB",msg)
-    if not unpacked_code:
-        pass
-    
+    print(unpacked_code[0])
     if(unpacked_code[0]==1):
-       read(child_sock,unpacked_code,client)
+        block=0
+        try:
+            with open (unpacked_code[1].decode(),'r') as readfile: 
+           #Abrimos el archivo que hemos indicado en el cliente     
+                while True:                       
+                    sent_bytes=readfile.read(512)                      
+                    #Leemos los paquetes que queremos del fichero en este caso de     
+                    last_packet = struct.pack(f'=2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
+                    #Este paquete contiene el codigo, el bloque y los datos necesarios   
+                    
+                    block=block+1
+                    #Incrementamos el block number cada iteración    
+                    child_sock.send(last_packet) 
+                    #Mandamos el paquete
+                    if (len(sent_bytes)<512):
+                        break  
+                    #En el caso de que el ultimo paquete sea menor que 512, la opción de lectura terminará                         
+            
+            
+        except OSError:
+            message='File Not Found'
+            
+            error_packet=struct.pack(f'=2H{len(message)-5}sB',5,1,str.encode(message),0)
+            
+            child_sock.send(error_packet)
+
+            child_sock.close()
     if(unpacked_code[0]==2):
        write(child_sock,unpacked_code,client)
     else:
@@ -107,8 +97,7 @@ def main(*args,**kwargs):
     sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
     port=int(sys.argv[1])
     sock.bind(('',port))
-    Clients=int(input("Indicate the number of clients: "))
-    sock.listen(Clients)
+    sock.listen(5)
     n=0     
     while 1:
         
