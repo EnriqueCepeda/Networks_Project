@@ -1,152 +1,119 @@
-# -*- coding: utf-8 -*-
-
-from socket import socket, AF_INET, SOCK_STREAM
+#!/usr/bin/python3.7
+import struct
 import pickle
 import sys
-import struct
+from socket import *
 import traceback
-import io
+import io 
+from _thread import *
 import time
+from threading import *
+                  
 
-def write(sock,*args,**kwargs):
-    if(len(args)!=4):
-        raise Exception("The number of arguments is not correct")
-    
-    ip=args[2]
-    port=args[3]
-    file_name=args[0]
-         
-    last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",2,str.encode(file_name),0,b'netascii',0)
-    sock.send(last_packet) 
-    #Enviamos el paquete para empezar a leer del servidor , args[0] es el nombre del archivo de texto que queremos leer
-    #! es por el formato de la red
-    #H es por un unsigned short de 2 Bytes
-    #s es por una cadena de caracteres cuya longitud esta definida por la propia cadena en el formato
-    #B es por un unsigned char que ocupa 1 Byte
-
-
-    with open(file_name,'w',) as f:
-
-        while True:
-                                
-            msg = sock.recv(516) 
-
-            code_message = struct.unpack(f'=H{len(msg)-2}s', msg) 
             
-            print(code_message[0])
-                   
-            if(code_message[0]==4):
 
-                sent_bytes=f.read(512)
-
-                leftUnpackedMsg = struct.unpack('=H', code_message[1])
-                        
-                last_packet= struct.pack(f'!2H{len(sent_bytes)}s', 4 , leftUnpackedMsg[1]+1 ,sent_bytes)       #EL PRIMER MENSAJE DE ACK DEL SERVER AL CLIENTE TIENE QUE TENER BLOQUE 0
-                
-                sent = sock.send(last_packet)   
-
-
-
-                      
-
-            else:
-                        #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
-
-                        #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
-                leftUnpackedMsg= struct.unpack(f'=H{len(code_message[1])-3}sB', code_message[1])
-                print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1]}")
-                break
-                                             
-                 
-def read(sock,*args,**kwargs):
-    if(len(args)!=4):
-        raise Exception("The number of arguments is not correct")
-    ip=args[2]
-    port=args[3]
-    file_name=args[0]
-    
-    
-    last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",1,str.encode(file_name),0,b'netascii',0)  
-    
-    sock.send(last_packet) 
-    #Enviamos el paquete para empezar a leer del servidor , args[0] es el nombre del archivo de texto que queremos leer
-    #! es por el formato de la red
-    #H es por un unsigned short de 2 Bytes
-    #s es por una cadena de caracteres cuya longitud esta definida por la propia cadena en el formato
-    #B es por un unsigned char que ocupa 1 Byte
-
-
-    with open(file_name,'w',) as f:
-
-        while True:
+def write(sock,unpacked_code,client):
+    block=0
+    recieve=False
+    try:
+        with open(unpacked_code[1].decode(),'x') as writefile:
+        
+            while True:        
             
-                        
-                msg = sock.recv(516)         
-                    #516 es el tamaño de los 512 bytes de datos maximos mas los 2 bytes del codigo y los 2 bytes del bloque
-               
-                
-                code_message = struct.unpack(f'!H{len(msg)-2}s',msg) #Extraemos todo el paquete del servidor dividiendolo en codigo de mensaje y lo demás para primero analizar el codigo
-                #En este caso el codigo sería el correcto, el codigo 3, que significa que recibimos datos del servidor tftp
-                               
-                if(code_message[0]==3):
-                    print(code_message[1])
+                if not recieve:
+                    last_packet=struct.pack(f'!2H',4,block)
                     
+                    block=block+1
+
+                    sock.send(last_packet)
                     
-                    leftUnpackedMsg = struct.unpack(f'=H{len(code_message[1])-2}s', code_message[1]) #Extraemos todo el paquete del servidor dividiendolo en los campos indicados en el comentario de arriba
-                        #print(leftUnpackedMsg[0])
-                    print(leftUnpackedMsg[1])
-                        #Escribimos en un archivo que se llama igual que el archivo del server lo que recibimos de el
-                    f.write(leftUnpackedMsg[1].decode('cp437'))
-                                        
-                       
-                
+                    msg = sock.recv(512)
+
+                    write_message = struct.unpack(f'=2H{len(msg)-4}s',msg)
+                    
+                    print(write_message)
+
+                    recieved_bytes=writefile.write(write_message[2])
+                    
                 else:
-                        #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
+                    sock.send(last_packet)
 
-                        #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
-                    leftUnpackedMsg= struct.unpack(f'=H{len(code_message[1])-3}sB',code_message[1])
-                    
-                    print(f"Error number:{code_message[0]} Message:{leftUnpackedMsg[1].decode()}")
-                        #depende de como lo haya hecho enrique lo tengo que mirar como lo ha hecho para el cliente proque teiene que ser concurrente
-                    break
+                    msg=sock.recv(512)
 
-            
+                    write_message = struct.unpack(f'=2H{len(msg)-4}s',msg)
 
+                    recieved_bytes=writefile.write(write_message[2])
 
-
-
+                    recieve=False
 
     
+    
+    except IOError:
+        message='File Already Exists'
+        sock.send(struct.pack(f'=2H{len(message)}sH',5,2,str.encode(message),0))
+        
 
+def client_handle(child_sock,client,n):
+    print("Client conected: ",n,client)
+    msg =child_sock.recv(516) #RECIBIMOS EL PAQUETE QUE EL SERVIDOR MANDA, LA CANTIDAD DE DATOS TIENE QUE SER EL APROPIADO PARA QUE NO HAYA RESTRICCIONES
+    unpacked_code = struct.unpack(f"!H{len(msg)-12}sB{len('netascii')}sB",msg)
+    print(unpacked_code[0])
+    if(unpacked_code[0]==1):
+        block=0
+        try:
+            with open (unpacked_code[1].decode(),'r') as readfile: 
+           #Abrimos el archivo que hemos indicado en el cliente     
+                while True:                       
+                    sent_bytes=readfile.read(512)                      
+                    #Leemos los paquetes que queremos del fichero en este caso de     
+                    last_packet = struct.pack(f'=2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
+                    #Este paquete contiene el codigo, el bloque y los datos necesarios   
+                    
+                    block=block+1
+                    #Incrementamos el block number cada iteración    
+                    child_sock.send(last_packet) 
+                    #Mandamos el paquete
+                    if (len(sent_bytes)<512):
+                        break  
+                    #En el caso de que el ultimo paquete sea menor que 512, la opción de lectura terminará                         
+            
+            
+        except OSError:
+            message='File Not Found'
+            
+            error_packet=struct.pack(f'=2H{len(message)-5}sB',5,1,str.encode(message),0)
+            
+            child_sock.send(error_packet)
 
-def end_program(sock,*args,**kwargs):
-    sock.close()
-    raise SystemError("Bye,good to see you")
-
-functions={
-    "quit":end_program,
-    "read":read,
-    "write":write
-}
+            child_sock.close()
+    if(unpacked_code[0]==2):
+       write(child_sock,unpacked_code,client)
+    else:
+       pass
 
 def main(*args,**kwargs):
 
     sock = socket(AF_INET, SOCK_STREAM)
-    sock.connect((sys.argv[1],int(sys.argv[2])))
-    while True:
-        command = input('TFTP@TCP> ').lower()
-        arguments = command.split() + sys.argv
-        functions[arguments[0]](sock,*arguments[1:])
+    sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
+    port=int(sys.argv[1])
+    sock.bind(('',port))
+    sock.listen(5)
+    n=0     
+    while 1:
         
-            
-
-
+        child_socket, client= sock.accept()
+        n=n+1
+        start_new_thread(client_handle,(child_socket,client,n))
         
+    
+    
+
 
 if __name__ == '__main__':
     try:
-        sys.exit(main())
+      sys.exit(main())
     except KeyboardInterrupt:
-        pass
+      pass
+    
     except Exception:
         traceback.print_exc()
