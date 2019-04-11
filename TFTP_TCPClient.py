@@ -133,6 +133,7 @@ def main(*args,**kwargs):
 
     sock = socket(AF_INET, SOCK_STREAM)
     sock.connect((sys.argv[1],int(sys.argv[2])))
+    
     while True:
         command = input('TFTP@TCP> ').lower()
         arguments = command.split() + sys.argv

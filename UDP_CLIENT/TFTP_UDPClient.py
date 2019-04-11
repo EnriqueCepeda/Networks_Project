@@ -16,6 +16,7 @@ def write(sock,*args,**kwargs):
     port=args[4]
 
     recieved=False
+    last_message=False
     last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",2,str.encode(file_name),0,b'netascii',0)
 
     #Enviamos el paquete para empezar a leer del servidor , args[0] es el nombre del archivo de texto que queremos leer
@@ -37,12 +38,12 @@ def write(sock,*args,**kwargs):
                     
                 if not recieved:
 
-                    #Podemos recibir una RRQ/ERR o normalmente un ACK de tamaño 4 que es el tamaño del acknowledgmente que serían 2 bytes del codigo y otros 2 del codigo
                     msg,cliente = sock.recvfrom(516)
 
-                    code_message = struct.unpack(f'=H{len(msg)-2}s', msg) #Extraemos todo el paquete del servidor dividiendolo en codigo de mensaje y lo demás para primero analizar el codigo
+                    if last_message: break
 
-                    #En este caso el codigo sería el correcto, el codigo 4, que significa que hemos recibido el OK del server, un acknowledgment
+                    code_message = struct.unpack(f'=H{len(msg)-2}s', msg) 
+
                     if(code_message[0]==4):
 
                         sent_bytes=f.read(512)
@@ -56,9 +57,8 @@ def write(sock,*args,**kwargs):
                     
                     else:
 
-                        #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
+                        print(code_message[0])
 
-                        #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
                         leftUnpackedMsg= struct.unpack(f'=H{len(code_message[1])-3}sB', code_message[1])
 
                         print(f"Error number:{leftUnpackedMsg[0]}  Message:{leftUnpackedMsg[1].decode()}")
@@ -70,13 +70,14 @@ def write(sock,*args,**kwargs):
                     recieved=False
                         
                 
-            except socket.error as socketerror: #pendiente que sea la excepción socket.timeout
+            except socket.error as socketerror: 
                 recieved=True
-                print(socketerror.strerror)
-
+            
             else:
-                if(len(sent_bytes) < 512 ):
-                    break
+                if( len(sent_bytes) < 512):
+                    last_message=True
+
+                    
 
     
         
@@ -91,11 +92,12 @@ def read(sock,*args,**kwargs):
     port=args[4]
    
     acknowledgment=False
+    last_message=False
 
     last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",1,str.encode(file_name),0,b'netascii',0)
     sock.sendto(last_packet, (ip ,int(port)))
 
-    with open(args[0],'w',) as f:
+    with open(file_name,'w',) as f:
 
         while True:
 
@@ -103,28 +105,24 @@ def read(sock,*args,**kwargs):
                     
                 if not acknowledgment:
 
-                    #516 es el tamaño de los 512 bytes de datos maximos mas los 2 bytes del codigo y los 2 bytes del bloque
                     msg,cliente = sock.recvfrom(516)
 
-                    code_message = struct.unpack(f'!H{len(msg)-2}s', msg) #Extraemos todo el paquete del servidor dividiendolo en codigo de mensaje y lo demás para primero analizar el codigo
+                    if last_message: break
 
-                    #En este caso el codigo sería el correcto, el codigo 3, que significa que recibimos datos del servidor tftp
+                    code_message = struct.unpack(f'!H{len(msg)-2}s', msg) 
                     if(code_message[0]==3):
 
-                        leftUnpackedMsg = struct.unpack(f'=H{len(code_message[1])-2}s', code_message[1]) #Extraemos todo el paquete del servidor dividiendolo en los campos indicados en el comentario de arriba
+                        leftUnpackedMsg = struct.unpack(f'=H{len(code_message[1])-2}s', code_message[1]) 
 
-                        #Escribimos en un archivo que se llama igual que el archivo del server lo que recibimos de el
-                        f.write(leftUnpackedMsg[1].decode("utf-8"))
+                        f.write(leftUnpackedMsg[1].decode('ascii'))
                         
                         last_packet = struct.pack('!2H', 4 , leftUnpackedMsg[0]) 
-                        #Enviamos codigo 4 de ACK y el numero de bloque al que corresponde el acknowledgment
-                        sock.sendto(last_packet , cliente )   #ACK
+
+                        sock.sendto( last_packet , cliente )   #ACK
 
                     else:
-                        #TODAVIA NO VA ESTA PARTE
-                        #En este caso estamos recibiendo el codigo 5, que significa que ha habido un error en el servidor, tendríamos que mostrar un mensaje al usuario
-                        #Lo dividimos en 2 bytes de error, el mensaje, y un byte que es un 0
-                        leftUnpackedMsg= struct.unpack(f'=H{len(leftUnpackedMsg[1])-3}sB', code_message[1])
+                        
+                        leftUnpackedMsg = struct.unpack(f'=H{len(code_message[1])-3}sB', code_message[1])
                         print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1].decode()}")
                         break
 
@@ -135,11 +133,11 @@ def read(sock,*args,**kwargs):
                 
             except socket.error as socketerror: 
                 acknowledgment=True
-                print(socketerror.strerror)
 
             else:
-                if(struct.calcsize(msg) < 516 ):
-                    break
+                if(len(msg) < 516 ):
+                    last_message=True
+
 
     
 
@@ -179,4 +177,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     except Exception:
-        traceback.print_exc()
+            traceback.print_exc()

@@ -35,7 +35,6 @@ def read(sock,unpacked_code,client):
                         
                         unpacked_ack=struct.unpack('=2H',msg)
                         
-                        print(unpacked_ack)
                         
                     else:
 
@@ -44,16 +43,15 @@ def read(sock,unpacked_code,client):
                         recieved = False
 
                 except socket.error as socketerror:
-                    print(socketerror.strerror)
                     recieved=True
                 
                 else:
-                    if(len(sent_bytes) < 512 ):
-                        break
+                    if len(sent_bytes) < 512 :
+                        last_message=True
 
     except OSError:
         message='File Not Found'
-        sock.sendto(struct.pack(f'=2H{len(message)}sH',5,1,str.encode(message),0) , client)
+        sock.sendto(struct.pack(f'=2H{len(message)}sB',5,1,str.encode(message),0) , client)
 
 
 def write(sock,unpacked_code,client):
@@ -81,7 +79,6 @@ def write(sock,unpacked_code,client):
                         msg, client =sock.recvfrom(512) #EL SERVIDOR RESCIBE EL ACK DEL CLIENTE
 
                         write_message=struct.unpack(f'2H{len(msg)-4}',msg)
-                        print(write_message)
                         recieved_bytes=writefile.write(write_message[2])
                         
                         
@@ -99,12 +96,12 @@ def write(sock,unpacked_code,client):
                     recieved=True
                 
                 else:
-                    if(len(recieved_bytes) < 512 ):
+                    if recieved_bytes < 512 :
                         break
 
     except OSError:
         message='File already exists'
-        sock.sendto(struct.pack(f'=2H{len(message)}sH',5,1,str.encode(message),0) , client)
+        sock.sendto(struct.pack(f'=2H{len(message)}sB',5,1,str.encode(message),0) , client)
 
 
 def main(*args,**kwargs):
@@ -143,7 +140,7 @@ if __name__ == '__main__':
     try:
       sys.exit(main())
     except KeyboardInterrupt:
-      pass
+        pass
     except Exception:
         traceback.print_exc()
         
