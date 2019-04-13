@@ -4,6 +4,7 @@ import sys
 import socket
 import traceback
 import time
+import os
 
 def read(sock,unpacked_code,client):
     
@@ -33,35 +34,36 @@ def read(sock,unpacked_code,client):
 
                         msg, client =sock.recvfrom(512) #EL SERVIDOR RESCIBE EL ACK DEL CLIENTE
                         
-                        unpacked_ack=struct.unpack('=2H',msg)
-                        
-                        
                     else:
 
                         sock.sendto(last_packet,client)
                         msg, client =sock.recvfrom(512)
                         recieved = False
 
-                except socket.error as socketerror:
+                except socket.error:
                     recieved=True
+                
+                except Exception:
+                    traceback.print_exc()
                 
                 else:
                     if len(sent_bytes) < 512 :
-                        last_message=True
+                        break
 
     except OSError:
         message='File Not Found'
-        sock.sendto(struct.pack(f'=2H{len(message)}sB',5,1,str.encode(message),0) , client)
+        sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0) , client)
 
 
 def write(sock,unpacked_code,client):
 
     block=0
     recieved=False
+    last_message = False
 
     try:
 
-        with open(unpacked_code[0],'x') as writefile:
+        with os.fdopen(os.open(unpacked_code[0], os.O_CREAT | os.O_EXCL | os.O_WRONLY),'w') as writefile:
         
             while True:
                 
@@ -74,34 +76,38 @@ def write(sock,unpacked_code,client):
 
                         block = block + 1
                         
-                        sock.sendto(last_packet, client) #MANDAMOS LA ESTRUCTURA DEL LOS DATOS QUE LEEMOS DEL FICHERO
+                        sock.sendto(last_packet, client) 
 
-                        msg, client =sock.recvfrom(512) #EL SERVIDOR RESCIBE EL ACK DEL CLIENTE
+                        if last_message:break
 
-                        write_message=struct.unpack(f'2H{len(msg)-4}',msg)
-                        recieved_bytes=writefile.write(write_message[2])
+                        msg, client =sock.recvfrom(512) 
+
+                        write_message=struct.unpack(f'!2H{len(msg)-4}s',msg)
+
+                        recieved_bytes=writefile.write(write_message[2].decode())
                         
                         
                     else:
 
                         sock.sendto(last_packet,client)
+                        if last_message: break
+
                         msg, client =sock.recvfrom(512)
-                        write_message=struct.unpack(f'2H{len(msg)-4}',msg)
-                        recieved_bytes=writefile.write(write_message[2])
+                        write_message=struct.unpack(f'!2H{len(msg)-4}s',msg)
+                        recieved_bytes=writefile.write(write_message[2].decode())
                         
                         recieved = False
 
-                except socket.error as socketerror:
-                    print(socketerror.strerror)
+                except socket.error:
                     recieved=True
                 
                 else:
                     if recieved_bytes < 512 :
-                        break
+                        last_message=True
 
     except OSError:
         message='File already exists'
-        sock.sendto(struct.pack(f'=2H{len(message)}sB',5,1,str.encode(message),0) , client)
+        sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0) , client)
 
 
 def main(*args,**kwargs):
@@ -120,7 +126,9 @@ def main(*args,**kwargs):
         with open('log.txt','a') as logfile:
             
             while True:
+                
                 try:
+
                     msg, client =sock.recvfrom(516)
 
                     unpacked_code = struct.unpack(f"!H{len(msg)-12}sB{len('netascii')}sB",msg)
