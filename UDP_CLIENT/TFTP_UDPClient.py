@@ -8,6 +8,7 @@ from os import remove
 import pdb
 
 
+
 def write(sock,*args,**kwargs):
 
     if(len(args)!=5):
@@ -17,8 +18,15 @@ def write(sock,*args,**kwargs):
     ip=args[2]
     port=args[4]
 
+    file_content=''
+    count=0
+
     recieved=False
     last_message=False
+
+    with open(file_name,'r') as writefile:
+        file_content = writefile.read().encode()
+    
     last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",2,str.encode(file_name),0,b'netascii',0)
 
     #Enviamos el paquete para empezar a leer del servidor , args[0] es el nombre del archivo de texto que queremos leer
@@ -29,58 +37,47 @@ def write(sock,*args,**kwargs):
 
     sock.sendto(last_packet, (ip,int(port)) ) 
 
-    with open(file_name,'r',) as writefile:
 
-        while True:
+    while True:
+
+            
+        if not recieved:
 
             try:
-                    
-                if not recieved:
-
-                    msg,cliente = sock.recvfrom(516)
-
-                    if last_message: break
-
-                    code_message = struct.unpack(f'!H{len(msg)-2}s', msg) 
-
-                    if(code_message[0]==4):
-
-                        sent_bytes= writefile.read(512)
-
-                        leftUnpackedMsg = struct.unpack('!H', code_message[1])
-                        
-                        #EL PRIMER MENSAJE DE ACK DEL SERVER AL CLIENTE TIENE QUE TENER BLOQUE 0
-                        last_packet = struct.pack(f'!2H{len(sent_bytes)}s', 4 , leftUnpackedMsg[0]+1 ,str.encode(sent_bytes))
-
-                        sock.sendto(last_packet, cliente)  
-                    
-                    else:
-
-                        leftUnpackedMsg= struct.unpack(f'!H{len(code_message[1])-3}sB', code_message[1])
-
-                        print(f"Error number:{leftUnpackedMsg[0]}  Message:{leftUnpackedMsg[1].decode()}")
-
-                        break
-                        
-                        
-                else:
-                    sock.sendto(last_packet,(ip,int(port)))
-                    recieved=False
-                        
-                
+                msg,cliente = sock.recvfrom(516)
             except socket.error: 
                 recieved=True
-            
-            except Exception:
-                traceback.print_exc()
+                continue
+
+            if last_message: break
+
+            code_message = struct.unpack(f'!H{len(msg)-2}s', msg) 
+
+            if(code_message[0]==4):
+
+                leftUnpackedMsg = struct.unpack('!H', code_message[1])
+
+                sent_bytes= file_content[count : leftUnpackedMsg[0]*512]
+                count = count + len(sent_bytes)
+                last_packet = struct.pack(f'!2H{len(sent_bytes)}s', 4 , leftUnpackedMsg[0]+1 ,sent_bytes)
+
+                sock.sendto(last_packet, cliente)  
+                
+                if( len ( sent_bytes ) < 512):
+                    last_message=True
             
             else:
-                if( len ( sent_bytes ) < 516):
-                    last_message=True
 
-                    
+                leftUnpackedMsg= struct.unpack(f'!H{len(code_message[1])-3}sB', code_message[1])
+                print(f"Error number:{leftUnpackedMsg[0]}  Message:{leftUnpackedMsg[1].decode()}")
 
-    
+                break
+                
+                
+        else:
+            sock.sendto(last_packet,(ip,int(port)))
+            recieved=False
+
         
 def read(sock,*args,**kwargs):
 
@@ -91,56 +88,60 @@ def read(sock,*args,**kwargs):
     file_name=args[0]
     ip=args[2]
     port=args[4]
-   
+    file_content=''
+
+
     acknowledgment=False
 
     last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",1,str.encode(file_name),0,b'netascii',0)
     sock.sendto(last_packet, (ip ,int(port)))
 
-    with open(file_name,'w',) as f:
+    
 
-        while True:
-
-            try:
+    while True:
                     
-                if not acknowledgment:
+        if not acknowledgment:
+            
+            try:
 
-                    msg,cliente = sock.recvfrom(516)
+                msg,cliente = sock.recvfrom(516)
 
-                    code_message = struct.unpack(f'!H{len(msg)-2}s', msg) 
-
-                    if(code_message[0]==3):
-
-                        leftUnpackedMsg = struct.unpack(f'!H{len(code_message[1])-2}s', code_message[1]) 
-
-                        f.write(leftUnpackedMsg[1].decode())
-                        
-                        last_packet = struct.pack('!2H', 4 , leftUnpackedMsg[0]) 
-
-                        sock.sendto( last_packet , cliente )   #ACK
-
-                    else:
-                        
-                        leftUnpackedMsg = struct.unpack(f'!H{len(code_message[1])-3}sB', code_message[1])
-
-                        remove(file_name)
-                        
-                        print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1].decode()}")
-                        break
-
-                else:
-                    sock.sendto(last_packet, (ip,int(port)) )   #ACK
-                    acknowledgment=False
-                        
-                
             except socket.error: 
                 acknowledgment=True
+                continue
 
-            except Exception:
-                traceback.print_exc()
-            else:
+            code_message = struct.unpack(f'!H{len(msg)-2}s', msg) 
+        
+            if(code_message[0]==3):
+
+                leftUnpackedMsg = struct.unpack(f'!H{len(code_message[1])-2}s', code_message[1]) 
+
+                file_content = file_content + leftUnpackedMsg[1].decode()
+                
+                last_packet = struct.pack('!2H', 4 , leftUnpackedMsg[0]) 
+
+                sock.sendto( last_packet , cliente )   #ACK
+
                 if ( len(msg) < 516 ):
                     break
+
+            else:
+                
+                leftUnpackedMsg = struct.unpack(f'!H{len(code_message[1])-3}sB', code_message[1])
+                
+                print(f"Error number:{leftUnpackedMsg[0]} Message:{leftUnpackedMsg[1].decode()}")
+
+                break
+
+
+        else:
+            sock.sendto(last_packet, (ip,int(port)) )   
+            acknowledgment=False
+            
+    
+    if(code_message[0]==3):
+        with open(file_name,'w',) as f:
+            f.write(file_content)
 
 
     
@@ -158,24 +159,29 @@ functions={
 def main(*args,**kwargs):
 
     if(sys.argv[1]!='-s'or sys.argv[3]!='-p'):
-            raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
+        raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
 
-        timeval = struct.pack('LL',0,995000)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
+        configure_socket(sock,999999)
 
         while True:
             
             command = input('TFTP@UDP> ').lower()
             arguments = command.split() + sys.argv[1:]
             functions[arguments[0]](sock,*arguments[1:])
+
+def configure_socket(sock,maxtimeout):
+    timeval = struct.pack('LL',0,maxtimeout)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
+
+
       
 
 if __name__ == '__main__':
     try:
-        exit(main())
+        sys.exit(main())
     except KeyboardInterrupt:
         pass
     except Exception:
-            traceback.print_exc()
+        traceback.print_exc()
