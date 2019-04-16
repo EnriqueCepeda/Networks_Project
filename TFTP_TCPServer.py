@@ -13,21 +13,24 @@ def read(child_sock,unpacked_code,client):
     block=0
     try:
         with open (unpacked_code[1].decode(),'r') as readfile: 
-           #Abrimos el archivo que hemos indicado en el cliente     
+             
+            c
+            
             while True:                       
                 sent_bytes=readfile.read(512)                      
-                    #Leemos los paquetes que queremos del fichero en este caso de     
+                
                 last_packet = struct.pack(f'=2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
-                    #Este paquete contiene el codigo, el bloque y los datos necesarios   
+                   
                 block=block+1
-                    #Incrementamos el block number cada iteración    
+                       
                 child_sock.send(last_packet) 
-                    #Mandamos el paquete
+                    
                 if(len(sent_bytes)<512):
                     break 
-                    #En el caso de que el ultimo paquete sea menor que 512, la opción de lectura terminará                         
+                               
             
     except FileNotFoundError:
+        
         
         message='File Not Found'
             
@@ -41,24 +44,33 @@ def read(child_sock,unpacked_code,client):
 
 def write(sock,unpacked_code,client):
     try:
+        
         with open(unpacked_code[1].decode(),'x') as writefile:
         
+            confirm_packet=struct.pack(f'=H',4)
+            print(confirm_packet[0])
+            sock.send(confirm_packet)
+            
             while True:        
                     
                 msg = sock.recv(512)
 
-                if not msg:
-                    break
-
+                print(msg)
                 write_message = struct.unpack(f'!2H{len(msg)-4}s',msg)
 
                 if(write_message[0]==3):    
 
                     writefile.write(write_message[2].decode("utf-8"))
 
+                    #podemos mandar una mensaje de seguimiento
                     if(len(write_message[2])<512):
                         break
-    except IOError:
+    
+    except FileExistsError:
+        
+        confirm_packet=struct.pack(f'=H',5)
+        print(confirm_packet[0])    
+        sock.send(confirm_packet)
         
         message='File Already Exists'
         
@@ -71,18 +83,26 @@ def write(sock,unpacked_code,client):
         
 
 def client_handle(child_sock,client,n):
-    while True:
-        print("Client conected: ",n,client)
-        msg =child_sock.recv(516) #RECIBIMOS EL PAQUETE QUE EL SERVIDOR MANDA, LA CANTIDAD DE DATOS TIENE QUE SER EL APROPIADO PARA QUE NO HAYA RESTRICCIONES
-        unpacked_code = struct.unpack(f"!H{len(msg)-12}sB{len('netascii')}sB",msg)
-        print(unpacked_code[0])
-        if(unpacked_code[0]==1):
-            read(child_sock,unpacked_code,client)
-        if(unpacked_code[0]==2):
-            write(child_sock,unpacked_code,client)
-        else:
-            pass
-    
+    logfile_content=''
+    with open('log.txt','a') as logfile:
+        while True:
+            try:
+            
+                print("Client conected: ",n,client)
+        
+                msg =child_sock.recv(516) 
+        
+                unpacked_code = struct.unpack(f"!H{len(msg)-12}sB{len('netascii')}sB",msg)
+                print(unpacked_code[0])
+                if(unpacked_code[0]==1):
+                    logfile.write(f'read file:{unpacked_code[1].decode()}, served-client:{client}, time:{time.asctime()}\n')
+                    read(child_sock,unpacked_code,client)
+                if(unpacked_code[0]==2):
+                    logfile.write(f'write file:{unpacked_code[1].decode()}, served-client:{client}, time:{time.asctime()}\n')
+                    write(child_sock,unpacked_code,client)
+            except IOError:
+                pass    
+    logfile.write(logfile_content)
 
 def main(*args,**kwargs):
     try: 
@@ -95,7 +115,9 @@ def main(*args,**kwargs):
         while 1:
         
             child_socket, client= sock.accept()
+            
             n=n+1
+            
             start_new_thread(client_handle,(child_socket,client,n))
 
     except socket.error:   
