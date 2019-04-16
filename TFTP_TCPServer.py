@@ -14,7 +14,6 @@ def read(child_sock,unpacked_code,client):
     try:
         with open (unpacked_code[1].decode(),'r') as readfile: 
              
-            c
             
             while True:                       
                 sent_bytes=readfile.read(512)                      
@@ -47,7 +46,7 @@ def write(sock,unpacked_code,client):
         
         with open(unpacked_code[1].decode(),'x') as writefile:
         
-            confirm_packet=struct.pack(f'=H',4)
+            confirm_packet=struct.pack(f'!H',4)
             print(confirm_packet[0])
             sock.send(confirm_packet)
             
@@ -68,8 +67,8 @@ def write(sock,unpacked_code,client):
     
     except FileExistsError:
         
-        confirm_packet=struct.pack(f'=H',5)
-        print(confirm_packet[0])    
+        confirm_packet=struct.pack(f'!H',5)
+        print(confirm_packet)    
         sock.send(confirm_packet)
         
         message='File Already Exists'
