@@ -31,7 +31,7 @@ def write(sock,*args,**kwargs):
     with open(file_name,'r',) as f:
 
         autentication_packet=sock.recv(2)
-        confirm_packet=struct.unpack('=H',autentication_packet)
+        confirm_packet=struct.unpack(f'!H',autentication_packet)
         print(confirm_packet[0])
         
         if (confirm_packet[0]==4):
@@ -52,7 +52,7 @@ def write(sock,*args,**kwargs):
         
         else:
             
-            print("block")
+            
             error_message=sock.recv(516)
             
             error_packet=struct.unpack(f'=2H{len(error_message)-5}sB',error_message)
