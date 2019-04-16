@@ -30,31 +30,36 @@ def write(sock,*args,**kwargs):
 
     with open(file_name,'r',) as f:
 
-        while True:         
+        autentication_packet=sock.recv(2)
+        confirm_packet=struct.unpack('=H',autentication_packet)
+        print(confirm_packet[0])
+        
+        if (confirm_packet[0]==4):
+            while True:         
+                    
+                sent_bytes=f.read(512)
                 
-            sent_bytes=f.read(512)
-            
-            last_packet = struct.pack(f'!2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
-                                        
-            sent = sock.send(last_packet)   
+                last_packet = struct.pack(f'!2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
+                                            
+                sent = sock.send(last_packet)   
 
-            block+=1
+                block+=1
+                
+                if(len(last_packet)<512):
+                    
+                    break   
             
+        
+        else:
+            
+            print("block")
             error_message=sock.recv(516)
             
-            if error_message:
-               
-                error_packet=struct.unpack(f'=2H{len(error_message)-5}sB',error_message)
+            error_packet=struct.unpack(f'=2H{len(error_message)-5}sB',error_message)
                                 
-                print(f"Error number:{error_packet[0]} Message:",error_packet[2].decode() )
+            print(f"Error number:{error_packet[0]} Message:",error_packet[2].decode() )
                  
-                break
-            
-            if(len(last_packet)<512):
-                
-                break
-
-                
+            pass
     
         
 def read(sock,*args,**kwargs):
