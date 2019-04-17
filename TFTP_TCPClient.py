@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import socket
-import pickle
 import sys
 import struct
 import traceback
@@ -9,37 +8,37 @@ import io
 import time
 
 def write(sock,*args,**kwargs):
-    if(len(args)!=4):
-        raise Exception("The number of arguments is not correct")
+    
+    if(len(args)!=6):
+        
+        raise Exception("Please introduce the arguments in the correct format -> WRITE 'filename'")
     
     ip=args[2]
     port=args[3]
     file_name=args[0]
          
-    last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",2,str.encode(file_name),0,b'netascii',0)
+    last_packet=sendRRQWRQ(2,file_name,sock)
     
-    sock.send(last_packet)
-    
-    block=1 
+    block = 1 
 
     
 
     with open(file_name,'r',) as f:
 
         autentication_packet=sock.recv(2)
-        confirm_packet=struct.unpack(f'!H',autentication_packet)
+        
+        confirm_packet=autentication_message(autentication_packet)
 
         
-        if (confirm_packet[0]==4):
+        if (confirm_packet==4):
+            
             while True:         
                     
                 sent_bytes=f.read(512)
                 
-                last_packet = struct.pack(f'!2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
-                                            
-                sent = sock.send(last_packet)   
+                last_packet = send_data(sock,block,sent_bytes)   
 
-                block+=1
+                block = block + 1
                 
                 if(len(last_packet)<512):
                     
@@ -51,54 +50,43 @@ def write(sock,*args,**kwargs):
             
             error_message=sock.recv(516)
             
-            error_packet=struct.unpack(f'!2H{len(error_message)-5}sB',error_message)
-                                
-            print(f"Error number:{error_packet[0]} Message:",error_packet[2].decode())
-                 
+            unpack_err_write(error_message)
+
             pass
     
         
 def read(sock,*args,**kwargs):
-    if(len(args)!=4):
+    if(len(args)!=6):
         raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
-    ip=args[2]
-    port=args[3]
+    
     file_name=args[0]
     
+    last_packet=sendRRQWRQ(1,file_name,sock)
     
-    last_packet=struct.pack(f"!H{len(file_name)}sB{len('netascii')}sB",1,str.encode(file_name),0,b'netascii',0)  
-    
-    sock.send(last_packet) 
-    
-
-
-    with open(file_name,'wb',) as f:
+    with open(file_name,'wb',) as file_write:
 
         while True:
             
                         
-                msg = sock.recv(516)         
+                packet = sock.recv(516)         
                
+                code = unpack_packetcode(packet)
                 
-                code_message = struct.unpack(f'!H{len(msg)-2}s',msg)               
-                if(code_message[0]==3):
+                data_packed = unpack_data(packet)              
+                
+                if(code==3):
                                     
                     
-                    leftUnpackedMsg = struct.unpack(f'!H{len(code_message[1])-2}s', code_message[1]) 
+                    leftUnpackedMsg = unpack_data(data_packed[1])
 
-                    f.write(leftUnpackedMsg[1])
+                    file_write.write(leftUnpackedMsg[1])
 
                     if(len(leftUnpackedMsg[1])<512):
                         
                         break
-                                        
-                       
-                
                 else:
-
-                    leftUnpackedMsg= struct.unpack(f'!H{len(code_message[1])-3}sB',code_message[1])
                     
-                    print(f"Error number:{code_message[0]} Message:{leftUnpackedMsg[1].decode()}")
+                    unpack_err_read(data_packed[1],code)
 
                     break
                 
@@ -106,8 +94,9 @@ def read(sock,*args,**kwargs):
 
 
 def end_program(sock,*args,**kwargs):
-    sock.close()
-    raise SystemError("Bye,good to see you")
+    
+    raise KeyboardInterrupt("Bye,good to see you")
+    
 
 functions={
     "quit":end_program,
@@ -128,7 +117,35 @@ def main(*args,**kwargs):
             
             
 
-        
+def sendRRQWRQ(code,file_name,sock,encode_mode='netascii'):
+    last_packet=struct.pack(f"!H{len(file_name)}sB{len(encode_mode)}sB", code ,str.encode(file_name),0,str.encode(encode_mode),0)
+    sock.send(last_packet)
+    return last_packet
+
+def autentication_message(packet):        
+    confirm_packet=struct.unpack(f'!H',packet)
+    return confirm_packet[0]
+
+def unpack_packetcode(packet):
+    code_message = struct.unpack(f'!H{len(packet)-2}s', packet)
+    return code_message[0]
+
+def unpack_data(packet):
+    unpacked_data = struct.unpack(f'!H{len(packet)-2}s', packet)
+    return unpacked_data
+
+def unpack_err_read(packet,code):
+    unpacked_err = struct.unpack(f'!H{len(packet)-3}sB', packet)
+    print(f"Error number:{code} Message:{unpacked_err[1].decode()}")     
+
+def send_data(sock,block,data):
+    packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , str.encode(data))
+    sock.send(packed_data)  
+    return packed_data
+
+def unpack_err_write(packet):
+    unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
+    print(f"Error number:{unpacked_err[0]} Message:{unpacked_err[2].decode()}")
 
 if __name__ == '__main__':
     try:
