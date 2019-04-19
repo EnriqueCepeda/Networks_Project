@@ -9,8 +9,8 @@ import time
 
 def write(sock,*args,**kwargs):
     
-    if(len(args)!=6):
-        
+    if(len(args)!=5):
+        print(args)
         raise Exception("Please introduce the arguments in the correct format -> WRITE 'filename'")
     
     ip=args[2]
@@ -56,7 +56,8 @@ def write(sock,*args,**kwargs):
     
         
 def read(sock,*args,**kwargs):
-    if(len(args)!=6):
+    if(len(args)!=5):
+        print(args)
         raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
     
     file_name=args[0]
@@ -95,6 +96,10 @@ def read(sock,*args,**kwargs):
 
 def end_program(sock,*args,**kwargs):
     
+    if(len(args)!=4):
+        print(args)
+        raise Exception("Please introduce the arguments in the correct format -> QUIT")
+
     raise KeyboardInterrupt("Bye,good to see you")
     
 
@@ -112,8 +117,12 @@ def main(*args,**kwargs):
         sock.connect((sys.argv[2],int(sys.argv[4])))
         while True:
             command = input('TFTP@TCP> ').lower()
-            arguments = command.split() + sys.argv
-            functions[arguments[0]](sock,*arguments[1:])
+            arguments = command.split() + sys.argv[1:]
+            try:
+
+                functions[arguments[0]](sock,*arguments[1:])
+            except OSError as filenotfounderror:
+                print(filenotfounderror.strerror)
             
             
 
