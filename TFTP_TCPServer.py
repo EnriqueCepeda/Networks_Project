@@ -1,13 +1,13 @@
 #!/usr/bin/python3.7
 import struct
-import pickle
 import sys
 import socket
 import traceback
 import io 
-from _thread import *
+import _thread
 import time
-from threading import *
+import threading
+
                   
 def read(child_sock,msg,client):
     block = 0
@@ -15,17 +15,16 @@ def read(child_sock,msg,client):
     rrq=unpack_RRQWRQ(msg)
 
     try:
+       
         with open (rrq[1].decode(),'r') as readfile: 
              
             
             while True:                       
                 sent_bytes=readfile.read(512)                      
                 
-                last_packet = struct.pack(f'!2H{len(sent_bytes)}s',3,block,str.encode(sent_bytes))
+                last_packet = send_data(child_sock,block,sent_bytes)
                    
                 block=block+1
-                       
-                child_sock.send(last_packet) 
                     
                 if(len(sent_bytes)<512):
                     break 
@@ -36,9 +35,7 @@ def read(child_sock,msg,client):
         
         message='File Not Found'
             
-        error_packet=struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0)
-            
-        child_sock.send(error_packet)
+        send_err(child_sock,message)
 
         
 
@@ -46,10 +43,11 @@ def read(child_sock,msg,client):
 
 def write(sock,msg,client):
     try:
+        wrq=unpack_RRQWRQ(msg)
+
+        with open(wrq[1].decode(),'x') as writefile:
         
-        with open(unpacked_code[1].decode(),'x') as writefile:
-        
-            confirm_packet=struct.pack(f'!H',4)
+            confirm_packet=authentification_message(4)
             
             sock.send(confirm_packet)
             
@@ -57,7 +55,7 @@ def write(sock,msg,client):
                     
                 msg = sock.recv(512)
 
-                write_message = struct.unpack(f'!2H{len(msg)-4}s',msg)
+                write_message = unpack_data(msg)
 
                 if(write_message[0]==3):    
 
@@ -69,15 +67,12 @@ def write(sock,msg,client):
     
     except FileExistsError:
         
-        confirm_packet=struct.pack(f'!H',5)
-         
+        confirm_packet=authentification_message(5)
         sock.send(confirm_packet)
         
         message='File Already Exists'
         
-        error_packet=struct.pack(f'!2H{len(message)}sB',5,2,str.encode(message),0)
-               
-        sock.send(error_packet)
+        send_err(sock,message)
 
         
 
@@ -90,8 +85,6 @@ def client_handle(child_sock,client,n):
         while True:
             
             try:
-            
-                
         
                 msg =child_sock.recv(516) 
         
@@ -100,17 +93,17 @@ def client_handle(child_sock,client,n):
                 if(code==1):
                     logfile.write(f'read request, time:{time.asctime()}\n')
                     read(child_sock,msg,client)
-                elif(code==2):
+                if(code==2):
                     logfile.write(f'write request, time:{time.asctime()}\n')
-                    write(child_sock,msg,client)
-
-                else:
+                    write(child_sock,msg,client)            
+            except Exception:
+                print("Client {} disconnected".format(n))
+                child_sock.close()
+                break
                     
-                    pass
-            except IOError:
-                pass    
     
-    logfile.write(logfile_content)
+        logfile.write(logfile_content)
+    logfile.close()    
 
 def main(*args,**kwargs):
     if(sys.argv[1]!= '-p' ):
@@ -118,25 +111,33 @@ def main(*args,**kwargs):
     
     try: 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            
+                
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             port=int(sys.argv[2])
             sock.bind(('',port))
             sock.listen(5)
             n=0     
             while 1:
-            
+                
                 child_socket, client= sock.accept()
-                
+                    
                 n = n + 1
+                    
+                print("Client {} conected {}".format(n,client))
                 
-                print("Client conected: ",n,client)
+                client_handler = threading.Thread(target=client_handle,args=(child_socket,client,n))
 
-                start_new_thread(client_handle,(child_socket,client,n))
-
+                client_handler.start()
+                #_thread.start_new_thread(client_handle,(child_socket,client,n))
+    
     except socket.error:   
-        print('Fail creating the socket')
-        sys.exit() 
+      print('Fail creating the socket')
+      sys.exit(1)    
+    
+    
+        
+        
+     
 
 def unpack_RRQWRQ(packet,decode_mode='netascii'):
     request = struct.unpack(f"!H{len(packet)-12}sB{len(decode_mode)}sB",packet)
@@ -146,15 +147,28 @@ def unpack_packetcode(packet):
     code_message = struct.unpack(f'!H{len(packet)-2}s', packet)
     return code_message[0]
 
-def send_data(destination,sock,block,data):
-    packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , data)
+def send_data(sock,block,data):
+    packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , str.encode(data))
     sock.send(packed_data)  
     return packed_data
+
+def send_err(child_sock,message):
+    error_packet=struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0)
+    child_sock.send(error_packet)
+
+def unpack_data(packet):
+    unpacked_data = struct.unpack(f'!2H{len(packet)-4}s', packet)
+    return unpacked_data 
+
+def authentification_message(code):   
+    authoritation=struct.pack(f'!H',code)
+    return authoritation
+    
 
 if __name__ == '__main__':
     try:
       sys.exit(main())
     except KeyboardInterrupt:
-      pass
+        pass
     except Exception:
         traceback.print_exc()
