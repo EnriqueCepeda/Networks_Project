@@ -7,6 +7,7 @@ import io
 import _thread
 import time
 import threading
+import os
 
                   
 def read(child_sock,msg,client):
@@ -17,7 +18,7 @@ def read(child_sock,msg,client):
     try:
        
         with open (rrq[1].decode(),'r') as readfile: 
-             
+                   
             
             while True:                       
                 sent_bytes=readfile.read(512)                      
@@ -42,10 +43,13 @@ def read(child_sock,msg,client):
             
 
 def write(sock,msg,client):
+    
+    message=''
+    
     try:
         wrq=unpack_RRQWRQ(msg)
-
-        with open(wrq[1].decode(),'x') as writefile:
+        
+        with os.fdopen(os.open(wrq[1], os.O_CREAT | os.O_EXCL | os.O_WRONLY),'w') as writefile:
         
             confirm_packet=authentification_message(4)
             
@@ -59,12 +63,16 @@ def write(sock,msg,client):
 
                 if(write_message[0]==3):    
 
-                    writefile.write(write_message[2].decode("utf-8"))
-
+                    #writefile.write(write_message[2].decode("utf-8"))
+                    message = message + write_message[2].decode("utf-8")
                     
                     if(len(write_message[2])<512):
+                        
                         break
-    
+            
+            writefile.write(message)
+        
+
     except FileExistsError:
         
         confirm_packet=authentification_message(5)
@@ -125,9 +133,9 @@ def main(*args,**kwargs):
                     
                 print("Client {} conected {}".format(n,client))
                 
-                client_handler = threading.Thread(target=client_handle,args=(child_socket,client,n))
+                client_connection = threading.Thread(target=client_handle,args=(child_socket,client,n))
 
-                client_handler.start()
+                client_connection.start()
                 #_thread.start_new_thread(client_handle,(child_socket,client,n))
     
     except socket.error:   
