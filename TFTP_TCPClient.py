@@ -6,6 +6,7 @@ import struct
 import traceback
 import io
 import time
+import os
 
 def write(sock,*args,**kwargs):
     
@@ -65,7 +66,7 @@ def read(sock,*args,**kwargs):
     last_packet=sendRRQWRQ(1,file_name,sock)
     
     with open(file_name,'wb',) as file_write:
-
+        
         while True:
             
                         
