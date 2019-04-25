@@ -128,7 +128,8 @@ functions={
 
 def main(*args,**kwargs):
 
-    if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or sys.argv != 4):
+    if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or len(sys.argv) != 5):
+        print(len(sys.argv))
         raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
     print(sys.argv)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -163,6 +164,7 @@ def unpack_ack(packet):
 def unpack_err(packet):
     unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
     print(f"Error number:{unpacked_err[1]} Message:{unpacked_err[2].decode()}")
+    return unpacked_err[1],unpacked_err[2].decode()
 
 def send_ack(destination, sock, block):
     packed_ack = struct.pack('!2H', 4 , block) 

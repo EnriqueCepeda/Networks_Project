@@ -21,8 +21,10 @@ def read(sock,packet,client):
             file_content = readfile.read().encode()
 
     except OSError:
-        message='File Not Found'.encode()
-        sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,message,0) , client)
+        message='File Not Found'
+        sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,message.encode(),0) , client)
+        with open('log.txt','a') as logfile:    
+            logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {rrq[1]} , status: {message}')
     
         
     while count < len(file_content) :
@@ -42,6 +44,8 @@ def read(sock,packet,client):
                 msg, client =sock.recvfrom(512)
 
                 if len(sent_bytes) < 512 :
+                    with open('log.txt','a') as logfile:    
+                        logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {rrq[1]} , status: succesfull')
                     break
             except socket.error:
                 recieved=True
@@ -54,6 +58,8 @@ def read(sock,packet,client):
                 msg, client =sock.recvfrom(512)
                 recieved = False
                 if len(sent_bytes) < 512 :
+                    with open('log.txt','a') as logfile:    
+                        logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {rrq[1]} , status: succesfull')
                     break
             except socket.error:
                 recieved=True
@@ -80,7 +86,10 @@ def write(sock,packet,client):
 
                     last_packet=send_ack(client,sock,block)
 
-                if last_message:break
+                if last_message:
+                    with open('log.txt','a') as logfile:    
+                        logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: write {wrq[1]} , status: succesfull')
+                    break
 
                 try:
                     msg, client =sock.recvfrom(516)
@@ -100,45 +109,45 @@ def write(sock,packet,client):
     except OSError:
         message='File already exists'
         sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0) , client)
+        with open('log.txt','a') as logfile:    
+            logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {wrq[1]} , status: {message}')
     
 
 
 
 def main(*args,**kwargs):
 
+    print (sys.argv)
+
+    print (len(sys.argv))
+
     if(sys.argv[1]!= '-p' ):
             raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         
-        timeval = struct.pack('LL',0,999999)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
-        port = sys.argv[2]
-        sock.bind(('',int(port)))
-        logfile_content=''
+        configure_socket(sock,sys.argv[2],999999)
 
+        while True:
 
+            try:
+
+                msg, client =sock.recvfrom(516)
+
+                code = unpack_packetcode(msg)
                 
-        with open('log.txt','a') as logfile:    
-            
-            while True:
+                if(code==1):
+                    read(sock,msg,client)
+                if(code==2):
+                    write(sock,msg,client)
+            except IOError:
+                pass
 
-                try:
 
-                    msg, client =sock.recvfrom(516)
-
-                    code = unpack_packetcode(msg)
-                    
-                    if(code==1):
-                        logfile.write(f'read request , time:{time.asctime()}\n')
-                        read(sock,msg,client)
-                    if(code==2):
-                        logfile.write(f'write request , time:{time.asctime()}\n')
-                        write(sock,msg,client)
-                except IOError:
-                    pass
-
-        logfile.write(logfile_content)
+def configure_socket(sock,port,maxtimeout):
+    timeval = struct.pack('LL',0,maxtimeout)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
+    sock.bind(('',int(port)))
 
 def unpack_packetcode(packet):
     code_message = struct.unpack(f'!H{len(packet)-2}s', packet)

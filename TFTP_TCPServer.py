@@ -44,8 +44,7 @@ def read(child_sock,msg,client):
 
 def write(sock,msg,client):
     
-    message=''
-    
+    message=''        
     try:
         wrq=unpack_RRQWRQ(msg)
         
@@ -57,15 +56,14 @@ def write(sock,msg,client):
             
             while True:        
                     
-                msg = sock.recv(512)
+                msg = sock.recv(516)
 
                 write_message = unpack_data(msg)
 
                 if(write_message[0]==3):    
-
-                    #writefile.write(write_message[2].decode("utf-8"))
-                    message = message + write_message[2].decode("utf-8")
                     
+                    
+                    message = message + write_message[2].decode("utf-8")
                     if(len(write_message[2])<512):
                         
                         break
@@ -136,7 +134,7 @@ def main(*args,**kwargs):
                 client_connection = threading.Thread(target=client_handle,args=(child_socket,client,n))
 
                 client_connection.start()
-                #_thread.start_new_thread(client_handle,(child_socket,client,n))
+                
     
     except socket.error:   
       print('Fail creating the socket')
