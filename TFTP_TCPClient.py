@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ #-*- coding: utf-8 -*-
 
 import socket
 import sys
@@ -26,10 +26,9 @@ def write(sock,*args,**kwargs):
 
     with open(file_name,'r',) as f:
 
-        autentication_packet=sock.recv(2)
+        autentication_packet=sock.recv(516)
         
-        confirm_packet=autentication_message(autentication_packet)
-
+        confirm_packet=autentication_message(autentication_packet) 
         
         if (confirm_packet==4):
             
@@ -46,12 +45,9 @@ def write(sock,*args,**kwargs):
                     break   
             
         
-        else:
-            
-            
-            error_message=sock.recv(516)
-            
-            unpack_err_write(error_message)
+        else:             
+                        
+            unpack_err_write(confirm_packet,autentication_packet)
 
             pass
     
@@ -67,31 +63,32 @@ def read(sock,*args,**kwargs):
     
     with open(file_name,'wb',) as file_write:
         
-        while True:
+        autentication_packet=sock.recv(516)
+        
+        confirm_packet=autentication_message(autentication_packet)
+        
+        if(confirm_packet==4):
             
-                        
+            while True:
+                
+                            
                 packet = sock.recv(516)         
-               
-                code = unpack_packetcode(packet)
-                
+                               
                 data_packed = unpack_data(packet)              
-                
-                if(code==3):
-                                    
-                    
-                    leftUnpackedMsg = unpack_data(data_packed[1])
+                     
+                leftUnpackedMsg = unpack_data(data_packed[1])
 
-                    file_write.write(leftUnpackedMsg[1])
+                file_write.write(leftUnpackedMsg[1])
 
-                    if(len(leftUnpackedMsg[1])<512):
-                        
-                        break
-                else:
-                    
-                    unpack_err_read(data_packed[1],code)
-
+                if(len(leftUnpackedMsg[1])<512):
+                            
                     break
-                
+                                    
+        else:                 
+            
+            unpack_err_read(autentication_packet,confirm_packet)
+
+            pass    
     
 
 
@@ -132,8 +129,10 @@ def sendRRQWRQ(code,file_name,sock,encode_mode='netascii'):
     sock.send(last_packet)
     return last_packet
 
+
+
 def autentication_message(packet):        
-    confirm_packet=struct.unpack(f'!H',packet)
+    confirm_packet=struct.unpack(f'!2H{len(packet)-5}sB',packet)
     return confirm_packet[0]
 
 def unpack_packetcode(packet):
@@ -145,15 +144,15 @@ def unpack_data(packet):
     return unpacked_data
 
 def unpack_err_read(packet,code):
-    unpacked_err = struct.unpack(f'!H{len(packet)-3}sB', packet)
-    print(f"Error number:{code} Message:{unpacked_err[1].decode()}")     
+    unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
+    print(f"Error number:{code} Message:{unpacked_err[2].decode()}")     
 
 def send_data(sock,block,data):
     packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , str.encode(data))
     sock.send(packed_data)  
     return packed_data
 
-def unpack_err_write(packet):
+def unpack_err_write(code,packet):
     unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
     print(f"Error number:{unpacked_err[0]} Message:{unpacked_err[2].decode()}")
 
