@@ -19,8 +19,16 @@ def read(child_sock,msg,client):
        
         with open (rrq[1].decode(),'r') as readfile: 
                    
+            message='File Has Found'
+            
+            confirm_packet=authentification_message(4,message,2)
+            
+            child_sock.send(confirm_packet)
+            
+            
             
             while True:                       
+                
                 sent_bytes=readfile.read(512)                      
                 
                 last_packet = send_data(child_sock,block,sent_bytes)
@@ -31,15 +39,13 @@ def read(child_sock,msg,client):
                     break 
                                
             
-    except FileNotFoundError:
-        
+    except FileNotFoundError: 
         
         message='File Not Found'
-            
-        send_err(child_sock,message)
-
         
-
+        confirm_packet=authentification_message(5,message,1)
+            
+        child_sock.send(confirm_packet)
             
 
 def write(sock,msg,client):
@@ -50,7 +56,9 @@ def write(sock,msg,client):
         
         with os.fdopen(os.open(wrq[1], os.O_CREAT | os.O_EXCL | os.O_WRONLY),'w') as writefile:
         
-            confirm_packet=authentification_message(4)
+            secure_message='File Not Exists'
+            
+            confirm_packet=authentification_message(4,secure_message,2)
             
             sock.send(confirm_packet)
             
@@ -64,6 +72,7 @@ def write(sock,msg,client):
                     
                     
                     message = message + write_message[2].decode("utf-8")
+                    
                     if(len(write_message[2])<512):
                         
                         break
@@ -71,15 +80,13 @@ def write(sock,msg,client):
             writefile.write(message)
         
 
-    except FileExistsError:
-        
-        confirm_packet=authentification_message(5)
-        sock.send(confirm_packet)
+    except FileExistsError: 
         
         message='File Already Exists'
         
-        send_err(sock,message)
-
+        confirm_packet=authentification_message(5,message,1)
+        
+        sock.send(confirm_packet)
         
 
         
@@ -158,16 +165,12 @@ def send_data(sock,block,data):
     sock.send(packed_data)  
     return packed_data
 
-def send_err(child_sock,message):
-    error_packet=struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0)
-    child_sock.send(error_packet)
-
 def unpack_data(packet):
     unpacked_data = struct.unpack(f'!2H{len(packet)-4}s', packet)
     return unpacked_data 
 
-def authentification_message(code):   
-    authoritation=struct.pack(f'!H',code)
+def authentification_message(code,message,code2):   
+    authoritation=struct.pack(f'!2H{len(message)}sB',code,code2,str.encode(message),0)
     return authoritation
     
 
