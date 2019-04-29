@@ -19,7 +19,7 @@ def write(sock,*args,**kwargs):
     recieved=False
     last_message=False
 
-    with open(file_name,'r') as writefile:
+    with open(f'UDP_CLIENT/{file_name}','r') as writefile:
         file_content = writefile.read().encode()  
 
     last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
@@ -110,7 +110,7 @@ def read(sock,*args,**kwargs):
             
     
     if(packet_code == 3):
-        with open(file_name,'w') as f:
+        with open(f'UDP_CLIENT/{file_name}','w') as f:
             f.write(file_content)
 
 
@@ -128,20 +128,21 @@ functions={
 
 def main(*args,**kwargs):
 
+    print(len(sys.argv))
+
     if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or len(sys.argv) != 5):
         print(len(sys.argv))
         raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
-    print(sys.argv)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
 
         configure_socket(sock,999999)
 
         while True:
             
-            command = input('TFTP@UDP> ').lower()
+            command = input('TFTP@UDP> ')
             arguments = command.split() + sys.argv[1:]
             try:
-                functions[arguments[0]](sock,*arguments[1:])
+                functions[arguments[0].lower()](sock,*arguments[1:])
             except OSError as filenotfounderror:
                 print(filenotfounderror.strerror)
 
