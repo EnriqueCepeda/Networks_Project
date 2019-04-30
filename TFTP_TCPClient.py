@@ -24,7 +24,7 @@ def write(sock,*args,**kwargs):
 
     
 
-    with open(file_name,'r',) as f:
+    with open(file_name,'rb',) as f:
 
         autentication_packet=sock.recv(516)
         
@@ -35,6 +35,7 @@ def write(sock,*args,**kwargs):
             while True:         
                     
                 sent_bytes=f.read(512)
+                
                 
                 last_packet = send_data(sock,block,sent_bytes)   
 
@@ -70,17 +71,14 @@ def read(sock,*args,**kwargs):
         if(confirm_packet==4):
             
             while True:
-                
-                            
-                packet = sock.recv(516)         
-                               
-                data_packed = unpack_data(packet)              
+                         
+                packet = sock.recv(516)                   
                      
-                leftUnpackedMsg = unpack_data(data_packed[1])
+                leftUnpackedMsg = unpack_data(packet)
+                
+                file_write.write(leftUnpackedMsg[2])
 
-                file_write.write(leftUnpackedMsg[1])
-
-                if(len(leftUnpackedMsg[1])<512):
+                if(len(leftUnpackedMsg[2])<512):
                             
                     break
                                     
@@ -130,7 +128,6 @@ def sendRRQWRQ(code,file_name,sock,encode_mode='netascii'):
     return last_packet
 
 
-
 def autentication_message(packet):        
     confirm_packet=struct.unpack(f'!2H{len(packet)-5}sB',packet)
     return confirm_packet[0]
@@ -140,21 +137,30 @@ def unpack_packetcode(packet):
     return code_message[0]
 
 def unpack_data(packet):
-    unpacked_data = struct.unpack(f'!H{len(packet)-2}s', packet)
+    unpacked_data = struct.unpack(f'!2H{len(packet)-4}s', packet)
     return unpacked_data
 
 def unpack_err_read(packet,code):
     unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
     print(f"Error number:{code} Message:{unpacked_err[2].decode()}")     
 
+def unpack_err_read_test(packet,code):
+    unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
+    return unpacked_err
+
 def send_data(sock,block,data):
-    packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , str.encode(data))
+    packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , data)
     sock.send(packed_data)  
     return packed_data
 
 def unpack_err_write(code,packet):
     unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
     print(f"Error number:{unpacked_err[0]} Message:{unpacked_err[2].decode()}")
+
+def unpack_err_write_test(code,packet):
+    print(type(packet))
+    unpacked_err = struct.unpack(f'!2H{len(packet)}sB', packet)
+    return unpacked_err
 
 if __name__ == '__main__':
     try:
