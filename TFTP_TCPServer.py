@@ -17,15 +17,13 @@ def read(child_sock,msg,client):
 
     try:
        
-        with open (rrq[1].decode(),'r') as readfile: 
+        with open (rrq[1].decode(),'rb') as readfile: 
                    
             message='File Has Found'
             
             confirm_packet=authentification_message(4,message,2)
             
             child_sock.send(confirm_packet)
-            
-            
             
             while True:                       
                 
@@ -54,7 +52,7 @@ def write(sock,msg,client):
     try:
         wrq=unpack_RRQWRQ(msg)
         
-        with os.fdopen(os.open(wrq[1], os.O_CREAT | os.O_EXCL | os.O_WRONLY),'w') as writefile:
+        with os.fdopen(os.open(wrq[1].decode(), os.O_CREAT | os.O_EXCL | os.O_WRONLY),'wb') as writefile:
         
             secure_message='File Not Exists'
             
@@ -71,13 +69,14 @@ def write(sock,msg,client):
                 if(write_message[0]==3):    
                     
                     
-                    message = message + write_message[2].decode("utf-8")
+                    writefile.write( write_message[2])
+                    
                     
                     if(len(write_message[2])<512):
                         
                         break
             
-            writefile.write(message)
+            
         
 
     except FileExistsError: 
@@ -161,7 +160,7 @@ def unpack_packetcode(packet):
     return code_message[0]
 
 def send_data(sock,block,data):
-    packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , str.encode(data))
+    packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , data)
     sock.send(packed_data)  
     return packed_data
 
