@@ -83,7 +83,7 @@ def write(sock,msg,client):
         
         message='File Already Exists'
         
-        confirm_packet=authentification_message(5,message,1)
+        confirm_packet=authentification_message(5,message,2)
         
         sock.send(confirm_packet)
         
