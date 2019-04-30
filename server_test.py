@@ -1,13 +1,11 @@
 import unittest
-import os
 import signal
 import subprocess
 import socket
-import sys
-import os
 import time
 import TFTP_UDPClient as tftpclient
-import pexpect
+from random import choices
+import string
 
 class Reliability_tests(unittest.TestCase):
 
@@ -16,78 +14,139 @@ class Reliability_tests(unittest.TestCase):
         self.port = 53010
         self.ip = "127.0.0.1"
         self.args = ["python3","TFTP_UDPServer.py","-p", f"{self.port}"]
-        self.read_name="filedoesntexists.txt"
-        self.write_name="log.txt" 
         self.server_proccess = subprocess.Popen(self.args)
 
 
-    def test_nofile(self):
+    def test_noFile(self):
         print("-------------------TEST NO FILE-------------------")
         packets=0
+        
+        file_name = "filedoesntexists.txt"
 
 
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
             
             tftpclient.configure_socket(sock,999999)
-            tftpclient.sendRRQWRQ(1,self.read_name,self.ip,self.port, sock)
+            tftpclient.sendRRQWRQ(1,file_name,self.ip,self.port, sock)
+            while True:
+                try:
 
-            try:
+                    message,client = sock.recvfrom(516)
+                    errorcode , errormessage = tftpclient.unpack_err(message)
+                    self.assertEqual(errormessage,"File Not Found")
+                    break
 
-                message,client = sock.recvfrom(516)
-                print(client)
-                errorcode , errormessage = tftpclient.unpack_err(message)
-                self.assertEqual(errormessage,"File Not Found")
+                    
+                except socket.error:
+                    print("error")
 
                 
-            except socket.error:
-                print("error")
-
-                
-    def test_existingfile(self):
+    def test_existingFile(self):
         print("-------------------TEST EXISTING FILE-------------------")
         packets=0
 
+        file_name="log.txt" 
+        max_packets=4
+
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
             
             tftpclient.configure_socket(sock,999999)
-            while packets < 10:
 
-                last_packet=tftpclient.sendRRQWRQ(2,self.write_name,self.ip,self.port, sock)
+            while packets < max_packets:
+
+                last_packet=tftpclient.sendRRQWRQ(2,file_name,self.ip,self.port, sock)
 
                 try:
 
                     message,client = sock.recvfrom(516)
-                    print(client)
                     errorcode , errormessage = tftpclient.unpack_err(message)
-                    self.assertEqual(errormessage,"File already exists")
-                        
+                    self.assertEqual(errormessage,"File already exists")  
                     break
                     
                 except socket.error:
                     packets = packets +1
+                    print("error")
 
-    def test_existingfile(self):
-        print("-------------------TEST EXISTING FILE-------------------")
+    def test_lostACK(self):
+        print("-------------------TEST LOST ACKNOWLEDGMENT-------------------")
+
         packets=0
+        timeout=0
+        maxpackets = 4
+        maxtimeout = 4
+
+        file_name="ack.txt" #This file must exist
 
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
-            
-            tftpclient.configure_socket(sock,999999)
-            while packets < 10:
 
-                last_packet=tftpclient.sendRRQWRQ(2,self.write_name,self.ip,self.port, sock)
+            tftpclient.configure_socket(sock,999999)
+
+            while True:   
+
+                try:
+
+                    last_packet=tftpclient.sendRRQWRQ(1,file_name,self.ip,self.port, sock)
+                    message,client = sock.recvfrom(516)
+                    break
+
+                except socket.error:
+                    pass
+                    
+            while packets < maxpackets or timeout < maxtimeout :
 
                 try:
 
                     message,client = sock.recvfrom(516)
-                    print(client)
-                    errorcode , errormessage = tftpclient.unpack_err(message)
-                    self.assertEqual(errormessage,"File already exists")
-                        
-                    break
-                    
+                    packets=packets+1
+                    print(packets)
+
                 except socket.error:
-                    packets = packets +1
+                    print("error")
+                    timeout = timeout +1
+
+            self.assertNotEqual(packets,15)
+
+
+    def test_lostData(self):
+        print("-------------------TEST LOST DATA-------------------")
+
+        packets=0
+        timeout=0
+        maxpackets = 4
+        maxtimeout = 4
+
+        file_name="data.txt" 
+
+        with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
+
+            tftpclient.configure_socket(sock,999999)
+
+            while True:   
+
+                try:
+
+                    last_packet=tftpclient.sendRRQWRQ(2,file_name,self.ip,self.port, sock)
+                    message,client = sock.recvfrom(516)
+                    break
+
+                except socket.error:
+                    print("error")
+                    pass
+                    
+            while packets < maxpackets or timeout < maxtimeout :
+
+                try:
+
+                    message,client = sock.recvfrom(516)
+                    packets=packets+1
+                    print(packets)
+
+                except socket.error:
+                    print("error")
+                    timeout = timeout +1
+
+            self.assertNotEqual(packets,15)
+    
 
 
     def tearDown(self):

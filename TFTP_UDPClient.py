@@ -15,6 +15,8 @@ def write(sock,*args,**kwargs):
 
     file_content=''
     count=0
+    continue_ack=0
+    max_continue_ack=10
 
     recieved=False
     last_message=False
@@ -24,14 +26,16 @@ def write(sock,*args,**kwargs):
 
     last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
     
-    while True:
+    while continue_ack<max_continue_ack:
   
         if not recieved:
 
             try:
                 msg,cliente = sock.recvfrom(516)
+                continue_ack=0
             except socket.error: 
                 recieved=True
+                continue_ack = continue_ack + 1
                 continue
 
             if last_message: break
@@ -71,19 +75,23 @@ def read(sock,*args,**kwargs):
     ip=args[2]
     port=args[4]
     file_content=''
+    continue_ack=0
+    max_continue_ack=10
 
     acknowledgment=False
 
     last_packet = sendRRQWRQ(1,file_name,ip,port,sock)
 
-    while True:
+    while continue_ack<max_continue_ack:
                     
         if not acknowledgment:
             
             try:
                 msg,cliente = sock.recvfrom(516)
+                continue_ack=0
 
-            except socket.error: 
+            except socket.error:  
+                continue_ack = continue_ack +1
                 acknowledgment=True
                 continue
 
@@ -109,9 +117,8 @@ def read(sock,*args,**kwargs):
             acknowledgment=False
             
     
-    if(packet_code == 3):
-        with open(f'UDP_CLIENT/{file_name}','w') as f:
-            f.write(file_content)
+    with open(f'UDP_CLIENT/{file_name}','w') as f:
+        f.write(file_content)
 
 
     
@@ -135,7 +142,7 @@ def main(*args,**kwargs):
         raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
 
-        configure_socket(sock,999999)
+        configure_socket(sock,100000)
 
         while True:
             
