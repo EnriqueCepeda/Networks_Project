@@ -142,7 +142,7 @@ def unpack_data(packet):
 
 def unpack_err_read(packet,code):
     unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
-    print(f"Error number:{code} Message:{unpacked_err[2].decode()}")     
+    print(f"Error number:{unpacked_err[1]} Message:{unpacked_err[2].decode()}")     
 
 def unpack_err_read_test(packet,code):
     unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
@@ -155,7 +155,7 @@ def send_data(sock,block,data):
 
 def unpack_err_write(code,packet):
     unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
-    print(f"Error number:{unpacked_err[0]} Message:{unpacked_err[2].decode()}")
+    print(f"Error number:{unpacked_err[1]} Message:{unpacked_err[2].decode()}")
 
 def unpack_err_write_test(code,packet):
     print(type(packet))
