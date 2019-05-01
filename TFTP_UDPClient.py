@@ -46,7 +46,7 @@ def write(sock,*args,**kwargs):
 
                 ack = unpack_ack(msg)
 
-                sent_bytes = file_content[count : ack[1]*512]
+                sent_bytes = file_content[count : (ack[1]+1)*512]
 
                 count = count + len(sent_bytes)
 
@@ -142,7 +142,7 @@ def main(*args,**kwargs):
         raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
 
-        configure_socket(sock,100000)
+        configure_socket(sock,999999)
 
         while True:
             

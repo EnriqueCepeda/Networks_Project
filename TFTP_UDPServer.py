@@ -32,19 +32,20 @@ def read(sock,packet,client):
             logfile.write("\n")
     
         
-    while count_bytes < len(file_content) and continueretransmissions < 10  :
+    while count_bytes <= len(file_content) and continueretransmissions < 10 :
 
         if not received: 
 
             continueretransmissions = 0 
 
-            block=block+1 
-
-            sent_bytes= file_content[count_bytes:512*block]
+            sent_bytes= file_content[count_bytes:512*(block+1)]
+            print(len(sent_bytes))
             
             count_bytes = count_bytes + len(sent_bytes)
 
             last_packet = send_data(client,sock,block,sent_bytes)
+
+            block=block+1 
 
             try:
 
@@ -58,6 +59,7 @@ def read(sock,packet,client):
                         logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {rrq[1]} , status: succesfull \n")
                     break
             except socket.error:
+                print("socket_error")
                 received=True
                 continueretransmissions= continueretransmissions + 1
             
@@ -91,6 +93,7 @@ def write(sock,packet,client):
     continueretransmissions=0
 
     wrq=unpack_RRQWRQ(packet)
+    print(f'UDP_SERVER/{wrq[1].decode()}')
 
     try:
 
@@ -102,9 +105,9 @@ def write(sock,packet,client):
 
                     continueretransmissions=0
 
-                    block = block + 1
-
                     last_packet=send_ack(client,sock,block)
+
+                    block = block + 1
                 
                 else:
                     sock.sendto(last_packet,client)
@@ -117,9 +120,9 @@ def write(sock,packet,client):
                 try:
 
                     msg, client =sock.recvfrom(516)
-                    if unpack_packetcode(msg) != 3:
-                        received = True
-                        continue
+                    #if unpack_packetcode(msg) != 3:
+                    #    received = True
+                    #    continue
 
                     if len(msg) < 516 :
                         last_message=True
@@ -135,7 +138,8 @@ def write(sock,packet,client):
 
             writefile.write(file_content)
 
-    except OSError:
+    except OSError as e:
+        print(e.errno)
         message='File already exists'
         sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0) , client)
         with open('log.txt','a') as logfile:    
