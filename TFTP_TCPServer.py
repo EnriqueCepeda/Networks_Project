@@ -1,182 +1,171 @@
-#!/usr/bin/python3.7
-import struct
-import sys
+ #-*- coding: utf-8 -*-
+
 import socket
+import sys
+import struct
 import traceback
-import io 
-import _thread
+import io
 import time
-import threading
 import os
 
-                  
-def read(child_sock,msg,client):
-    block = 0
-
-    rrq=unpack_RRQWRQ(msg)
-
-    try:
-       
-        with open (rrq[1].decode(),'rb') as readfile: 
-                   
-            message='File Has Found'
-            
-            confirm_packet=authentification_message(4,message,2)
-            
-            child_sock.send(confirm_packet)
-            
-            while True:                       
-                
-                sent_bytes=readfile.read(512)                      
-                
-                last_packet = send_data(child_sock,block,sent_bytes)
-                   
-                block=block+1
-                    
-                if(len(sent_bytes)<512):
-                    break 
-                               
-            
-    except FileNotFoundError: 
-        
-        message='File Not Found'
-        
-        confirm_packet=authentification_message(5,message,1)
-            
-        child_sock.send(confirm_packet)
-            
-
-def write(sock,msg,client):
+def write(sock,*args,**kwargs):
     
-    message=''        
-    try:
-        wrq=unpack_RRQWRQ(msg)
-        
-        with os.fdopen(os.open(wrq[1].decode(), os.O_CREAT | os.O_EXCL | os.O_WRONLY),'wb') as writefile:
-        
-            secure_message='File Not Exists'
-            
-            confirm_packet=authentification_message(4,secure_message,2)
-            
-            sock.send(confirm_packet)
-            
-            while True:        
-                    
-                msg = sock.recv(516)
+    if(len(args)!=5):
+        print(args)
+        raise Exception("Please introduce the arguments in the correct format -> WRITE 'filename'")
+    
+    ip=args[2]
+    port=args[3]
+    file_name=args[0]
+         
+    last_packet=sendRRQWRQ(2,file_name,sock)
+    
+    block = 1 
 
-                write_message = unpack_data(msg)
+    
 
-                if(write_message[0]==3):    
+    with open(file_name,'rb',) as f:
+
+        autentication_packet=sock.recv(516)
+        
+        confirm_packet=autentication_message(autentication_packet) 
+        
+        if (confirm_packet==4):
+            
+            while True:         
                     
+                sent_bytes=f.read(512)
+                
+                
+                last_packet = send_data(sock,block,sent_bytes)   
+
+                block = block + 1
+                
+                if(len(last_packet)<512):
                     
-                    writefile.write( write_message[2])
-                    
-                    
-                    if(len(write_message[2])<512):
+                    break   
+            
+        
+        else:             
                         
-                        break
-            
-            
-        
+            unpack_err_write(confirm_packet,autentication_packet)
 
-    except FileExistsError: 
-        
-        message='File Already Exists'
-        
-        confirm_packet=authentification_message(5,message,2)
-        
-        sock.send(confirm_packet)
-        
-
-        
-
-def client_handle(child_sock,client,n):
-    logfile_content=''
-
-    with open('log.txt','a') as logfile:
-        while True:
-            
-            try:
-        
-                msg =child_sock.recv(516) 
-        
-                code = unpack_packetcode(msg)
-                
-                if(code==1):
-                    logfile.write(f'read request, time:{time.asctime()}\n')
-                    read(child_sock,msg,client)
-                if(code==2):
-                    logfile.write(f'write request, time:{time.asctime()}\n')
-                    write(child_sock,msg,client)            
-            except Exception:
-                print("Client {} disconnected".format(n))
-                child_sock.close()
-                break
-                    
+            pass
     
-        logfile.write(logfile_content)
-    logfile.close()    
+        
+def read(sock,*args,**kwargs):
+    if(len(args)!=5):
+        print(args)
+        raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
+    
+    file_name=args[0]
+    
+    last_packet=sendRRQWRQ(1,file_name,sock)
+    
+    with open(file_name,'wb',) as file_write:
+        
+        autentication_packet=sock.recv(516)
+        
+        confirm_packet=autentication_message(autentication_packet)
+        
+        if(confirm_packet==4):
+            
+            while True:
+                         
+                packet = sock.recv(516)                   
+                     
+                leftUnpackedMsg = unpack_data(packet)
+                
+                file_write.write(leftUnpackedMsg[2])
+
+                if(len(leftUnpackedMsg[2])<512):
+                            
+                    break
+                                    
+        else:                 
+            
+            unpack_err_read(autentication_packet,confirm_packet)
+
+            pass    
+    
+
+
+def end_program(sock,*args,**kwargs):
+    
+    if(len(args)!=4):
+        print(args)
+        raise Exception("Please introduce the arguments in the correct format -> QUIT")
+
+    raise KeyboardInterrupt("Bye,good to see you")
+    
+
+functions={
+    "quit":end_program,
+    "read":read,
+    "write":write
+}
 
 def main(*args,**kwargs):
-    if(sys.argv[1]!= '-p' ):
-        raise Exception("Introduce the arguments in the correct format -> python3 TFTP_TCPServer.py -p 'port number' ")
+    if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or len(sys.argv) != 5 ):
+        raise Exception("Introduce the arguments in the correct format -> python3 TFTP_TCPClient.py -s 'server direction' -p 'port number' ")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     
-    try: 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            port=int(sys.argv[2])
-            sock.bind(('',port))
-            sock.listen(5)
-            n=0     
-            while 1:
-                
-                child_socket, client= sock.accept()
-                    
-                n = n + 1
-                    
-                print("Client {} conected {}".format(n,client))
-                
-                client_connection = threading.Thread(target=client_handle,args=(child_socket,client,n))
+        sock.connect((sys.argv[2],int(sys.argv[4])))
+        while True:
+            command = input('TFTP@TCP> ').lower()
+            arguments = command.split() + sys.argv[1:]
+            try:
 
-                client_connection.start()
-                
-    
-    except socket.error:   
-      print('Fail creating the socket')
-      sys.exit(1)    
-    
-    
-        
-        
-     
+                functions[arguments[0]](sock,*arguments[1:])
+            except OSError as filenotfounderror:
+                print(filenotfounderror.strerror)
+            
+            
 
-def unpack_RRQWRQ(packet,decode_mode='netascii'):
-    request = struct.unpack(f"!H{len(packet)-12}sB{len(decode_mode)}sB",packet)
-    return request
+def sendRRQWRQ(code,file_name,sock,encode_mode='netascii'):
+    last_packet=struct.pack(f"!H{len(file_name)}sB{len(encode_mode)}sB", code ,str.encode(file_name),0,str.encode(encode_mode),0)
+    sock.send(last_packet)
+    return last_packet
+
+
+def autentication_message(packet):        
+    confirm_packet=struct.unpack(f'!2H{len(packet)-5}sB',packet)
+    return confirm_packet[0]
 
 def unpack_packetcode(packet):
     code_message = struct.unpack(f'!H{len(packet)-2}s', packet)
     return code_message[0]
+
+def unpack_data(packet):
+    unpacked_data = struct.unpack(f'!2H{len(packet)-4}s', packet)
+    return unpacked_data
+
+def unpack_err_read(packet,code):
+    unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
+    print(f"Error number:{unpacked_err[1]} Message:{unpacked_err[2].decode()}")     
+
+def unpack_err_read_test(packet,code):
+    unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
+    return unpacked_err
 
 def send_data(sock,block,data):
     packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , data)
     sock.send(packed_data)  
     return packed_data
 
-def unpack_data(packet):
-    unpacked_data = struct.unpack(f'!2H{len(packet)-4}s', packet)
-    return unpacked_data 
+def unpack_err_write(code,packet):
+    unpacked_err = struct.unpack(f'!2H{len(packet)-5}sB', packet)
+    print(f"Error number:{unpacked_err[1]} Message:{unpacked_err[2].decode()}")
 
-def authentification_message(code,message,code2):   
-    authoritation=struct.pack(f'!2H{len(message)}sB',code,code2,str.encode(message),0)
-    return authoritation
-    
+def unpack_err_write_test(code,packet):
+    print(type(packet))
+    unpacked_err = struct.unpack(f'!2H{len(packet)}sB', packet)
+    return unpacked_err
 
 if __name__ == '__main__':
     try:
-      sys.exit(main())
+        sys.exit(main())
     except KeyboardInterrupt:
         pass
-    except Exception:
-        traceback.print_exc()
+    except Exception as e:
+        print(str(e))
