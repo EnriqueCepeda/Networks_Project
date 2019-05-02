@@ -48,7 +48,7 @@ def read(child_sock,msg,client):
 
 def write(sock,msg,client):
     
-    message=''        
+
     try:
         wrq=unpack_RRQWRQ(msg)
         
@@ -103,14 +103,20 @@ def client_handle(child_sock,client,n):
                 code = unpack_packetcode(msg)
                 
                 if(code==1):
+                    
                     logfile.write(f'read request, time:{time.asctime()}\n')
+                    
                     read(child_sock,msg,client)
+                
                 if(code==2):
                     logfile.write(f'write request, time:{time.asctime()}\n')
                     write(child_sock,msg,client)            
+            
             except Exception:
                 print("Client {} disconnected".format(n))
+                
                 child_sock.close()
+                
                 break
                     
     
@@ -127,8 +133,8 @@ def main(*args,**kwargs):
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             port=int(sys.argv[2])
             sock.bind(('',port))
-            sock.listen(5)
-            n=0     
+            sock.listen(1)
+            n = 0     
             while 1:
                 
                 child_socket, client= sock.accept()
