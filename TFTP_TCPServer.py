@@ -10,7 +10,8 @@ import threading
 import os
 
                   
-def read(child_sock,msg,client):
+def read(child_sock,msg,client,logfile):
+    
     block = 0
 
     rrq=unpack_RRQWRQ(msg)
@@ -20,6 +21,10 @@ def read(child_sock,msg,client):
         with open (rrq[1].decode(),'rb') as readfile: 
                    
             message='File Has Found'
+            
+            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
+        
+            logfile.write("\n")
             
             confirm_packet=authentification_message(4,message,2)
             
@@ -41,21 +46,30 @@ def read(child_sock,msg,client):
         
         message='File Not Found'
         
+        logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
+        
+        logfile.write("\n")
+        
         confirm_packet=authentification_message(5,message,1)
             
         child_sock.send(confirm_packet)
             
 
-def write(sock,msg,client):
+def write(sock,msg,client,logfile):
     
 
     try:
+        
         wrq=unpack_RRQWRQ(msg)
         
         with os.fdopen(os.open(wrq[1].decode(), os.O_CREAT | os.O_EXCL | os.O_WRONLY),'wb') as writefile:
         
             secure_message='File Not Exists'
             
+            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: WRITE {wrq[1].decode()} , status: {secure_message} ")
+            
+            logfile.write("\n")
+                  
             confirm_packet=authentification_message(4,secure_message,2)
             
             sock.send(confirm_packet)
@@ -83,6 +97,10 @@ def write(sock,msg,client):
         
         message='File Already Exists'
         
+        logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: WRITE {wrq[1].decode()} , status: {message} ")
+        
+        logfile.write("\n")
+        
         confirm_packet=authentification_message(5,message,2)
         
         sock.send(confirm_packet)
@@ -91,8 +109,7 @@ def write(sock,msg,client):
         
 
 def client_handle(child_sock,client,n):
-    logfile_content=''
-
+    
     with open('log.txt','a') as logfile:
         while True:
             
@@ -104,13 +121,12 @@ def client_handle(child_sock,client,n):
                 
                 if(code==1):
                     
-                    logfile.write(f'read request, time:{time.asctime()}\n')
-                    
-                    read(child_sock,msg,client)
+                                        
+                    read(child_sock,msg,client,logfile)
                 
                 if(code==2):
-                    logfile.write(f'write request, time:{time.asctime()}\n')
-                    write(child_sock,msg,client)            
+                    
+                    write(child_sock,msg,client,logfile)            
             
             except Exception:
                 print("Client {} disconnected".format(n))
@@ -119,8 +135,6 @@ def client_handle(child_sock,client,n):
                 
                 break
                     
-    
-        logfile.write(logfile_content)
     logfile.close()    
 
 def main(*args,**kwargs):
@@ -134,16 +148,16 @@ def main(*args,**kwargs):
             port=int(sys.argv[2])
             sock.bind(('',port))
             sock.listen(1)
-            n = 0     
+            n_client = 0     
             while 1:
                 
                 child_socket, client= sock.accept()
                     
-                n = n + 1
+                n_client = n_client + 1
                     
-                print("Client {} conected {}".format(n,client))
+                print("Client {} conected {}".format(n_client,client))
                 
-                client_connection = threading.Thread(target=client_handle,args=(child_socket,client,n))
+                client_connection = threading.Thread(target=client_handle,args=(child_socket,client,n_client))
 
                 client_connection.start()
                 
