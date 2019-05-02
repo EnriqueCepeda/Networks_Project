@@ -17,6 +17,7 @@ def write(sock,*args,**kwargs):
     count=0
     continue_ack=0
     max_continue_ack=10
+    file_iteration_block=1
 
     recieved=False
     last_message=False
@@ -46,7 +47,9 @@ def write(sock,*args,**kwargs):
 
                 ack = unpack_ack(msg)
 
-                sent_bytes = file_content[count : (ack[1]+1)*512]
+                sent_bytes = file_content[count : (file_iteration_block)*512]
+
+                file_iteration_block = file_iteration_block + 1
 
                 count = count + len(sent_bytes)
 
@@ -118,6 +121,7 @@ def read(sock,*args,**kwargs):
             
     
     with open(f'UDP_CLIENT/{file_name}','w') as f:
+        print(len(file_content))
         f.write(file_content)
 
 
