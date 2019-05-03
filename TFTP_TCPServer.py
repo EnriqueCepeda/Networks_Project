@@ -115,9 +115,7 @@ def client_handle(child_sock,client,n):
                 msg =child_sock.recv(516) 
         
                 code = unpack_packetcode(msg)
-
-                print(code)
-                
+               
                 if(code==1):
                                                             
                     read(child_sock,msg,client,logfile)
