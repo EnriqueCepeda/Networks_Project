@@ -29,9 +29,9 @@ def read(sock,packet,client):
 
     except OSError:
         message='File Not Found'
-        sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,message.encode(),0) , client)
+        last_message=send_err(message,sock,client)
         with open('UDP_SERVER/log.txt','a') as logfile:    
-            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {rrq[1]} , status: {message} ")
+            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: read {rrq[1]} , status: {message} ")
             logfile.write("\n")
     
         
@@ -60,7 +60,7 @@ def read(sock,packet,client):
 
                 if len(sent_bytes) < 512 :
                     with open('UDP_SERVER/log.txt','a') as logfile:    
-                        logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {rrq[1]} , status: succesfull \n")
+                        logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: read {rrq[1]} , status: succesfull \n")
                     break
             except socket.error:
                 print("socket_error")
@@ -81,7 +81,7 @@ def read(sock,packet,client):
 
                 if len(sent_bytes) < 512 :
                     with open('UDP_SERVER/log.txt','a') as logfile:    
-                        logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {rrq[1]} , status: succesfull \n')
+                        logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: read {rrq[1]} , status: succesfull \n')
                     break
             except socket.error:
                 received=True
@@ -117,7 +117,7 @@ def write(sock,packet,client):
 
                 if last_message:
                     with open('UDP_SERVER/log.txt','a') as logfile:    
-                        logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: write {wrq[1]} , status: succesfull \n')
+                        logfile.write(f'host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: write {wrq[1].decode()} , status: succesfull \n')
                     break
 
                 try:
@@ -142,11 +142,10 @@ def write(sock,packet,client):
             writefile.write(file_content)
 
     except OSError as e:
-        print(e.errno)
         message='File already exists'
-        sock.sendto(struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0) , client)
+        last_message=send_err(message,sock,client)
         with open('UDP_SERVER/log.txt','a') as logfile:    
-            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.localtime()} , request: read {wrq[1]} , status: {message}\n")
+            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: read {wrq[1]} , status: {message}\n")
     
 
 
@@ -180,6 +179,11 @@ def configure_socket(sock,port,maxtimeout):
     timeval = struct.pack('LL',0,maxtimeout)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeval)
     sock.bind(('',int(port)))
+
+def send_err(message,sock,client):
+    packed_err = struct.pack(f'!2H{len(message)}sB',5,1,message.encode(),0)
+    sock.sendto(packed_err,client)
+    return packed_err
 
 def unpack_packetcode(packet):
     code_message = struct.unpack(f'!H{len(packet)-2}s', packet)

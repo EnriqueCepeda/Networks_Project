@@ -14,3 +14,9 @@ __pycache__/
 
 # vscode
 .vscode
+
+#txt folders
+UDP_CLIENT/
+UDP_SERVER/
+TCP_CLIENT/
+TCP_SERVER/
