@@ -32,8 +32,11 @@ def read(child_sock,msg,client,logfile):
                 sent_bytes=readfile.read(512)            
                 
                 packed_data=send_data(child_sock,block,sent_bytes)                
-                 
-                block=block+1
+
+                if(block == 65535):
+                    block=1            
+                else: 
+                    block=block+1
                     
                 if(len(sent_bytes)<512):
                     break 
