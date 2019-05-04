@@ -74,8 +74,7 @@ def write(sock,msg,client,logfile):
             
             while True:        
                     
-                msg = sock.recv(516)             
-                  
+                msg = sock.recv(516)     
                 
                 write_message = unpack_data(msg)
                     
@@ -104,16 +103,17 @@ def write(sock,msg,client,logfile):
 
 def client_handle(child_sock,client,n):
     
-    with open('log.txt','a') as logfile:
+    with open('TCP_SERVER/log.txt','a') as logfile:
         
                 
            
         while True:
             
-            try:
-        
                 msg =child_sock.recv(516) 
-        
+
+                if(len(msg)==0):
+                    break
+
                 code = unpack_packetcode(msg)
                
                 if(code==1):
@@ -124,21 +124,18 @@ def client_handle(child_sock,client,n):
                     
                     write(child_sock,msg,client,logfile)            
             
-                       
-            except Exception:
-                print("Client {} disconnected".format(n))
 
-                child_sock.close()
-                
-                break
-                    
-    logfile.close()    
+        print("Client {} disconnected".format(client))
+
+        child_sock.close()
+
 
 def main(*args,**kwargs):
     if(sys.argv[1]!= '-p' ):
         raise Exception("Introduce the arguments in the correct format -> python3 TFTP_TCPServer.py -p 'port number' ")
     
-    try: 
+    try:
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -149,21 +146,28 @@ def main(*args,**kwargs):
             
             sock.listen(5)
             
-            n_client = 0     
-            
-            while 1:
-                
-                child_socket, client= sock.accept()
-                    
-                n_client = n_client + 1
-                    
-                print("Client {} conected {}".format(n_client,client))
-                
-                client_connection = threading.Thread(target=client_handle,args=(child_socket,client,n_client))
+            n_client = 0  
 
-                client_connection.start()
+            socket_array=[]   
+
+            try:
+                    
+                while 1:
+                    
+                    child_socket, client= sock.accept()
+                        
+                    n_client = n_client + 1
+                        
+                    print("Client {} conected {}".format(n_client,client))
+                    
+                    client_connection = threading.Thread(target=client_handle,args=(child_socket,client,n_client),daemon=True)
+                    socket_array.append((child_socket))
+                    client_connection.start()
                 
-    
+            except KeyboardInterrupt:
+                for sock in socket_array:
+                    sock.close()
+                
     except socket.error:   
       print('Fail creating the socket, there is something wrong')
       sys.exit(1)    

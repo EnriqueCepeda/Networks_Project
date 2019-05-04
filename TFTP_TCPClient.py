@@ -65,33 +65,32 @@ def read(sock,*args,**kwargs):
     
     last_packet=sendRRQWRQ(1,file_name,sock)
     
-    
-    
-    with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:
-        
             
-        while True:
-                                    
-            packet_data = sock.recv(516)                   
-                            
-            code=unpack_packetcode(packet_data)
+    while True:
+                                
+        packet_data = sock.recv(516)                   
+                        
+        code=unpack_packetcode(packet_data)
 
-            if(code==3):  
+        if(code==3):  
 
-                unpacked_data = unpack_data(packet_data)
-            
+
+            unpacked_data = unpack_data(packet_data)
+
+            with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:
+
                 file_write.write(unpacked_data[2])
-                        
-                if(len(unpacked_data[2])<512):
-                                    
-                    break
-                                            
-            else:                 
-                        
-                unpack_err(packet_data)
                     
+            if(len(unpacked_data[2])<512):
+                                
                 break
+                                        
+        else:                 
                     
+            unpack_err(packet_data)
+                
+            break
+                
                     
 
 def end_program(sock,*args,**kwargs):
@@ -108,17 +107,18 @@ def main(*args,**kwargs):
     if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or len(sys.argv) != 5 ):
         raise Exception("Introduce the arguments in the correct format -> python3 TFTP_TCPClient.py -s 'server direction' -p 'port number' ")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    
-        sock.connect((sys.argv[2],int(sys.argv[4])))
-        while True:
-            command = input('TFTP@TCP> ')
-            arguments = command.split() + sys.argv[1:]
-            try:
-
+        try:
+            sock.connect((sys.argv[2],int(sys.argv[4])))
+            while True:
+                command = input('TFTP@TCP> ')
+                arguments = command.split() + sys.argv[1:]
                 functions[arguments[0]](sock,*arguments[1:])
-            except OSError as filenotfounderror:
-                print(filenotfounderror.strerror)
-    
+        except KeyboardInterrupt:
+            sock.shutdown()
+            print("\nBye, good to see you")
+        except Exception as error:
+            print(error)
+        
 
             
 
@@ -148,7 +148,5 @@ def unpack_err(packet):
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except KeyboardInterrupt:
-        pass
     except Exception as e:
         (str(e))
