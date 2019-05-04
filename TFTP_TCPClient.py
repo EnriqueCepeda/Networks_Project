@@ -38,9 +38,14 @@ def write(sock,*args,**kwargs):
                                         
                     sent_bytes=file_read.read(512)
                                     
-                    last_packet = send_data(sock,block,sent_bytes)   
+                    last_packet = send_data(sock,block,sent_bytes)
 
-                    block = block + 1
+                    if(block == 65535):
+                        block=1            
+                    else: 
+                        block=block+1   
+
+                    
                     
                     if(len(last_packet)<512):
                                         
@@ -65,31 +70,29 @@ def read(sock,*args,**kwargs):
     
     last_packet=sendRRQWRQ(1,file_name,sock)
     
-            
-    while True:
-                                
-        packet_data = sock.recv(516)                   
-                        
-        code=unpack_packetcode(packet_data)
+    with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:        
+        while True:
+                                    
+            packet_data = sock.recv(516)                   
+                            
+            code=unpack_packetcode(packet_data)
 
-        if(code==3):  
+            if(code==3):  
 
 
-            unpacked_data = unpack_data(packet_data)
-
-            with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:
+                unpacked_data = unpack_data(packet_data)
 
                 file_write.write(unpacked_data[2])
+                        
+                if(len(unpacked_data[2])<512):
+                                    
+                    break
+                                            
+            else:                 
+                        
+                unpack_err(packet_data)
                     
-            if(len(unpacked_data[2])<512):
-                                
                 break
-                                        
-        else:                 
-                    
-            unpack_err(packet_data)
-                
-            break
                 
                     
 
