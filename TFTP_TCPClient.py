@@ -44,12 +44,10 @@ def write(sock,*args,**kwargs):
                         block=1            
                     else: 
                         block=block+1   
-
-                    
                     
                     if(len(last_packet)<512):
                                         
-                        break   
+                       break   
                                 
                             
             else:             
@@ -85,8 +83,9 @@ def read(sock,*args,**kwargs):
                 file_write.write(unpacked_data[2])
                         
                 if(len(unpacked_data[2])<512):
-                                    
-                    break
+
+                   print("que pasó")                
+                   break
                                             
             else:                 
                         

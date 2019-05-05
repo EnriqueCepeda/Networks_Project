@@ -10,7 +10,7 @@ import threading
 import os
 
                   
-def read(child_sock,msg,client,logfile):
+def read(child_sock,msg,client):
     
     block = 0
 
@@ -22,14 +22,20 @@ def read(child_sock,msg,client,logfile):
                    
             message='File Has Found'
             
-            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
+            with open('TCP_SERVER/log.txt','a') as logfile:
         
-            logfile.write("\n")
+                logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
+        
+                logfile.write("\n")
         
             
-            while True:                       
+            while True:                 
+
+                print("traza")      
                 
-                sent_bytes=readfile.read(512)            
+                sent_bytes=readfile.read(512)   
+
+                print(sent_bytes)         
                 
                 packed_data=send_data(child_sock,block,sent_bytes)                
 
@@ -44,17 +50,18 @@ def read(child_sock,msg,client,logfile):
                                
     except OSError:    
         message='File Not Found'
-        
-        logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
-        
-        logfile.write("\n")
+
+        with open('TCP_SERVER/log.txt','a') as logfile:
+
+            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
+            logfile.write("\n")
                   
         error_packet=struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0)
         
         child_sock.send(error_packet)
 
    
-def write(sock,msg,client,logfile):
+def write(sock,msg,client):
     
     block = 0
     
@@ -67,12 +74,14 @@ def write(sock,msg,client,logfile):
             
                         
             secure_message='File Not Exists'
+
+            with open('TCP_SERVER/log.txt','a') as logfile:
+        
+                
+                logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: WRITE {wrq[1].decode()} , status: {secure_message} ")
             
-            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: WRITE {wrq[1].decode()} , status: {secure_message} ")
-            
-            logfile.write("\n")
+                logfile.write("\n")
                
-            
             ack=send_ack(sock,block)       
             
             while True:        
@@ -80,10 +89,8 @@ def write(sock,msg,client,logfile):
                 msg = sock.recv(516)     
                 
                 write_message = unpack_data(msg)
-                    
-                    
+                         
                 writefile.write(write_message[2])
-                    
                     
                 if(len(write_message[2])<512):
                         
@@ -92,10 +99,12 @@ def write(sock,msg,client,logfile):
     except OSError:
         
         message='File Already Exists'
+
+        with open('TCP_SERVER/log.txt','a') as logfile:
         
-        logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: WRITE {wrq[1].decode()} , status: {message} ")
+            logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: WRITE {wrq[1].decode()} , status: {message} ")
         
-        logfile.write("\n")
+            logfile.write("\n")
                 
         error_packet=struct.pack(f'!2H{len(message)}sB',5,2,str.encode(message),0)
         
@@ -105,32 +114,28 @@ def write(sock,msg,client,logfile):
         
 
 def client_handle(child_sock,client,n):
-    
-    with open('TCP_SERVER/log.txt','a') as logfile:
-        
-                
-           
-        while True:
-            
-                msg =child_sock.recv(516) 
-
-                if(len(msg)==0):
-                    break
-
-                code = unpack_packetcode(msg)
                
-                if(code==1):
-                                                            
-                    read(child_sock,msg,client,logfile)
-                
-                if(code==2):
-                    
-                    write(child_sock,msg,client,logfile)            
+    while True:
+        
+        msg =child_sock.recv(516) 
+
+        if(len(msg)==0):
+            break
+
+        code = unpack_packetcode(msg)
+        
+        if(code==1):
+                                                    
+            read(child_sock,msg,client)
+        
+        if(code==2):
             
+            write(child_sock,msg,client)            
+    
 
-        print("Client {} disconnected".format(client))
+    print("Client {} disconnected".format(client))
 
-        child_sock.close()
+    child_sock.close()
 
 
 def main(*args,**kwargs):

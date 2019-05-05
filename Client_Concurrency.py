@@ -21,7 +21,8 @@ def read (port,ip,i, *args,**kwargs):
        
         last_packet=sendRRQWRQ(1,file_name,sock)
                 
-        with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:        
+        with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:     
+               
             while True:
                                         
                 packet_data = sock.recv(516)                   

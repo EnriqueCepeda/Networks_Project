@@ -39,7 +39,8 @@ def write(sock,*args,**kwargs):
                 continue_ack = continue_ack + 1
                 continue
 
-            if last_message: break
+            if last_message: 
+                break
 
             packet_code = unpack_packetcode(msg)
 
@@ -58,7 +59,7 @@ def write(sock,*args,**kwargs):
                 if( len ( sent_bytes ) < 512):
                     last_message=True
             
-            else:
+            elif(packet_code==5):
                 
                 unpack_err(msg)
                 break
@@ -109,9 +110,15 @@ def read(sock,*args,**kwargs):
                 last_packet = send_ack(cliente, sock, data[1])
 
                 if ( len(msg) < 516 ):
+                        
+                    with open(f'UDP_CLIENT/{file_name}','w') as f:
+                        f.write(file_content)
+                        
                     break
 
-            else:
+            
+            elif(packet_code==5):
+                
                 unpack_err(msg)
                 break
 
@@ -119,10 +126,6 @@ def read(sock,*args,**kwargs):
             sock.sendto(last_packet, (ip,int(port)) )   
             acknowledgment=False
             
-    
-    with open(f'UDP_CLIENT/{file_name}','w') as f:
-        print(len(file_content))
-        f.write(file_content)
 
 
     

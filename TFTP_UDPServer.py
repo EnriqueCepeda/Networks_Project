@@ -19,13 +19,11 @@ def read(sock,packet,client):
 
     rrq=unpack_RRQWRQ(packet)
 
-    print(rrq[1].decode())
 
     try:
 
         with open(f'UDP_SERVER/{rrq[1].decode()}','r') as readfile:
             file_content = readfile.read().encode()
-            print(len(file_content))
 
     except OSError:
         message='File Not Found'
@@ -63,7 +61,6 @@ def read(sock,packet,client):
                         logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: read {rrq[1]} , status: succesfull \n")
                     break
             except socket.error:
-                print("socket_error")
                 received=True
                 continueretransmissions= continueretransmissions + 1
             
@@ -142,6 +139,7 @@ def write(sock,packet,client):
             writefile.write(file_content)
 
     except OSError as e:
+        print(e)
         message='File already exists'
         last_message=send_err(message,sock,client)
         with open('UDP_SERVER/log.txt','a') as logfile:    
