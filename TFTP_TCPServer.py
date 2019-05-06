@@ -10,7 +10,7 @@ import threading
 import os
 
                   
-def read(child_sock,msg,client):
+def read(sock,msg,client):
     
     block = 0
 
@@ -30,19 +30,12 @@ def read(child_sock,msg,client):
         
             
             while True:                 
-
-                print("traza")      
                 
-                sent_bytes=readfile.read(512)   
-
-                print(sent_bytes)         
+                sent_bytes=readfile.read(512)       
                 
-                packed_data=send_data(child_sock,block,sent_bytes)                
-
-                if(block == 65535):
-                    block=1            
-                else: 
-                    block=block+1
+                packed_data=send_data(sock,block,sent_bytes)                
+            
+                block= (block+1) % 65535 
                     
                 if(len(sent_bytes)<512):
                     break 
@@ -55,10 +48,8 @@ def read(child_sock,msg,client):
 
             logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
             logfile.write("\n")
-                  
-        error_packet=struct.pack(f'!2H{len(message)}sB',5,1,str.encode(message),0)
-        
-        child_sock.send(error_packet)
+
+        send_err(message,sock,client)
 
    
 def write(sock,msg,client):
@@ -105,10 +96,9 @@ def write(sock,msg,client):
             logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: WRITE {wrq[1].decode()} , status: {message} ")
         
             logfile.write("\n")
-                
-        error_packet=struct.pack(f'!2H{len(message)}sB',5,2,str.encode(message),0)
+
+        send_err(message,sock,client)
         
-        sock.send(error_packet)
         
 
         
@@ -180,7 +170,10 @@ def main(*args,**kwargs):
       print('Fail creating the socket, there is something wrong')
       sys.exit(1)    
     
-    
+def send_err(message,sock,client):
+    packed_err = struct.pack(f'!2H{len(message)}sB',5,1,message.encode(),0)
+    sock.sendto(packed_err,client)
+    return packed_err   
         
 def send_data(sock,block,data):
     packed_data = struct.pack(f'!2H{len(data)}s', 3 , block , data)

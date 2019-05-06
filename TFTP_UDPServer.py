@@ -33,7 +33,7 @@ def read(sock,packet,client):
             logfile.write("\n")
     
         
-    while count_bytes <= len(file_content) and continueretransmissions < 10 :
+    while count_bytes < len(file_content) and continueretransmissions < 10 :
 
         if not received: 
 

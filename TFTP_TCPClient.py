@@ -13,62 +13,59 @@ from pathlib import Path
 def write(sock,*args,**kwargs):
     
     if(len(args)!=5):
-        print(args)
-        raise Exception("Please introduce the arguments in the correct format -> WRITE 'filename'")
+        print("Please introduce the arguments in the correct format -> WRITE 'filename'")
+    else:
     
-    ip=args[2]
-    port=args[3]
-    file_name=args[0]
-                 
-    try:   
-            
-        with open(f'TCP_CLIENT/{file_name}','rb',) as file_read:
+        ip=args[2]
+        port=args[3]
+        file_name=args[0]
+                    
+        try:   
                 
-            last_packet=sendRRQWRQ(2,file_name,sock)
-    
-            block = 0          
-                                    
-            ack_packet = sock.recv(516)
-                            
-            code=unpack_packetcode(ack_packet)       
+            with open(f'TCP_CLIENT/{file_name}','rb',) as file_read:
                     
-            if(code==4):    
-                                
-                while True:                                
-                                        
-                    sent_bytes=file_read.read(512)
-                                    
-                    last_packet = send_data(sock,block,sent_bytes)
-
-                    if(block == 65535):
-                        block=1            
-                    else: 
-                        block=block+1   
-                    
-                    if(len(last_packet)<512):
-                                        
-                       break   
-                                
-                            
-            else:             
-                                
-                unpack_err(ack_packet)
-            
-    except FileNotFoundError:
+                last_packet=sendRRQWRQ(2,file_name,sock)
         
-        print("This file doesn't exist")
+                block = 0          
+                                        
+                ack_packet = sock.recv(516)
+                                
+                code=unpack_packetcode(ack_packet)       
+                        
+                if(code==4):    
+                                    
+                    while True:                                
+                                            
+                        sent_bytes=file_read.read(512)
+                                        
+                        last_packet = send_data(sock,block,sent_bytes)
+                        
+                        block= (block+1) % 65535 
+                        
+                        if(len(last_packet)<512):
+                                            
+                            break   
+                                    
+                                
+                elif code==5:             
+                                    
+                    unpack_err(ack_packet)
+                
+        except FileNotFoundError:
+            
+            print("This file doesn't exist")
         
 def read(sock,*args,**kwargs):
     
     if(len(args)!=5):
-        print(args)
-        raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
+        print("Please introduce the arguments in the correct format -> READ 'filename'")
+    else:
     
-    file_name=args[0]
+        file_name=args[0]
+        
+        last_packet=sendRRQWRQ(1,file_name,sock)
     
-    last_packet=sendRRQWRQ(1,file_name,sock)
-    
-    with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:        
+
         while True:
                                     
             packet_data = sock.recv(516)                   
@@ -77,17 +74,16 @@ def read(sock,*args,**kwargs):
 
             if(code==3):  
 
-
                 unpacked_data = unpack_data(packet_data)
-
-                file_write.write(unpacked_data[2])
+                
+                with open(f'TCP_CLIENT/{file_name}','ba',) as file_write: 
+                    file_write.write(unpacked_data[2])
                         
                 if(len(unpacked_data[2])<512):
-
-                   print("que pasó")                
-                   break
+        
+                    break
                                             
-            else:                 
+            elif(code==5):                 
                         
                 unpack_err(packet_data)
                     
@@ -96,7 +92,8 @@ def read(sock,*args,**kwargs):
                     
 
 def end_program(sock,*args,**kwargs):
-    raise KeyboardInterrupt("Bye,good to see you")
+    print("Bye,good to see you")
+    sock.close()
 
 functions={
     "quit":end_program,
@@ -107,19 +104,18 @@ functions={
 def main(*args,**kwargs):
     
     if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or len(sys.argv) != 5 ):
-        raise Exception("Introduce the arguments in the correct format -> python3 TFTP_TCPClient.py -s 'server direction' -p 'port number' ")
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        try:
-            sock.connect((sys.argv[2],int(sys.argv[4])))
-            while True:
-                command = input('TFTP@TCP> ')
-                arguments = command.split() + sys.argv[1:]
-                functions[arguments[0]](sock,*arguments[1:])
-        except KeyboardInterrupt:
-            sock.shutdown()
-            print("\nBye, good to see you")
-        except Exception as error:
-            print(error)
+        print("Introduce the arguments in the correct format -> python3 TFTP_TCPClient.py -s 'server direction' -p 'port number' ")
+    else:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.connect((sys.argv[2],int(sys.argv[4])))
+                while True:
+                    command = input('TFTP@TCP> ')
+                    arguments = command.split() + sys.argv[1:]
+                    functions[arguments[0]](sock,*arguments[1:])
+
+                    if arguments[0]=='quit':
+                        break
+
         
 
             
@@ -150,5 +146,9 @@ def unpack_err(packet):
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except Exception as e:
-        (str(e))
+    except KeyboardInterrupt as e:
+        print("\nBye")
+    except socket.error as socketerror:
+        print(socketerror)
+    except Exception as generalException:
+        print(generalException)
