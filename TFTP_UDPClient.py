@@ -35,49 +35,54 @@ def write(sock,*args,**kwargs):
 
         if error==False:
 
-            last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
+            try:
+
+                last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
+                
+                while continue_ack<max_continue_ack:
             
-            while continue_ack<max_continue_ack:
-        
-                if not recieved:
+                    if not recieved:
 
-                    try:
-                        msg,cliente = sock.recvfrom(516)
-                        continue_ack=0
-                    except socket.error: 
-                        recieved=True
-                        continue_ack = continue_ack + 1
-                        continue
+                        try:
+                            msg,cliente = sock.recvfrom(516)
+                            continue_ack=0
+                        except socket.error: 
+                            recieved=True
+                            continue_ack = continue_ack + 1
+                            continue
 
-                    if last_message: 
-                        break
+                        if last_message: 
+                            break
 
-                    packet_code = unpack_packetcode(msg)
+                        packet_code = unpack_packetcode(msg)
 
-                    if(packet_code==4):
+                        if(packet_code==4):
 
-                        ack = unpack_ack(msg)
+                            ack = unpack_ack(msg)
 
-                        sent_bytes = file_content[count : (file_iteration_block)*512]
+                            sent_bytes = file_content[count : (file_iteration_block)*512]
 
-                        file_iteration_block = file_iteration_block + 1
+                            file_iteration_block = file_iteration_block + 1
 
-                        count = count + len(sent_bytes)
+                            count = count + len(sent_bytes)
 
-                        last_packet = send_data(cliente,sock,ack[1],sent_bytes)
+                            last_packet = send_data(cliente,sock,ack[1],sent_bytes)
 
-                        if( len ( sent_bytes ) < 512):
-                            last_message=True
-                    
-                    elif(packet_code==5):
+                            if( len ( sent_bytes ) < 512):
+                                last_message=True
                         
-                        unpack_err(msg)
-                        break
-                        
-                        
-                else:
-                    sock.sendto(last_packet,(ip,int(port)))
-                    recieved=False
+                        elif(packet_code==5):
+                            
+                            unpack_err(msg)
+                            break
+                            
+                            
+                    else:
+                        sock.sendto(last_packet,(ip,int(port)))
+                        recieved=False
+            
+            except UnicodeDecodeError as decodeerror:
+                print(decodeerror)
 
         
 def read(sock,*args,**kwargs):
@@ -86,57 +91,61 @@ def read(sock,*args,**kwargs):
         print("Please introduce the arguments in the correct format -> READ 'filename'")
     else:
 
-        file_name=args[0]
-        ip=args[2]
-        port=args[4]
-        file_content=''
-        continue_ack=0
-        max_continue_ack=10
+        try:
 
-        acknowledgment=False
+            file_name=args[0]
+            ip=args[2]
+            port=args[4]
+            file_content=''
+            continue_ack=0
+            max_continue_ack=10
 
-        last_packet = sendRRQWRQ(1,file_name,ip,port,sock)
+            acknowledgment=False
 
-        while continue_ack<max_continue_ack:
-                        
-            if not acknowledgment:
+            last_packet = sendRRQWRQ(1,file_name,ip,port,sock)
+
+            while continue_ack<max_continue_ack:
+                            
+                if not acknowledgment:
+                    
+                    try:
+                        msg,cliente = sock.recvfrom(516)
+                        continue_ack=0
+
+                    except socket.error:  
+                        continue_ack = continue_ack +1
+                        acknowledgment=True
+                        continue
+
+                    packet_code = unpack_packetcode(msg)
                 
-                try:
-                    msg,cliente = sock.recvfrom(516)
-                    continue_ack=0
+                    if(packet_code == 3):
 
-                except socket.error:  
-                    continue_ack = continue_ack +1
-                    acknowledgment=True
-                    continue
+                        data = unpack_data(msg)
 
-                packet_code = unpack_packetcode(msg)
-            
-                if(packet_code == 3):
+                        file_content = file_content + data[2].decode()
 
-                    data = unpack_data(msg)
+                        last_packet = send_ack(cliente, sock, data[1])
 
-                    file_content = file_content + data[2].decode()
+                        if ( len(msg) < 516 ):
+                                
+                            with open(f'UDP_CLIENT/{file_name}','w') as f:
+                                f.write(file_content)
+                                
+                            break
 
-                    last_packet = send_ack(cliente, sock, data[1])
-
-                    if ( len(msg) < 516 ):
-                            
-                        with open(f'UDP_CLIENT/{file_name}','w') as f:
-                            f.write(file_content)
-                            
+                    
+                    elif(packet_code==5):
+                        
+                        unpack_err(msg)
                         break
 
-                
-                elif(packet_code==5):
-                    
-                    unpack_err(msg)
-                    break
-
-            else:
-                sock.sendto(last_packet, (ip,int(port)) )   
-                acknowledgment=False
-                
+                else:
+                    sock.sendto(last_packet, (ip,int(port)) )   
+                    acknowledgment=False
+        
+        except UnicodeDecodeError as decodeerror:
+            print(decodeerror)
 
 
         
@@ -166,12 +175,11 @@ def main(*args,**kwargs):
                 
                 command = input('TFTP@UDP> ')
                 arguments = command.split() + sys.argv[1:]
-                print(arguments[1:])
                 try:
 
                     functions[arguments[0].lower()](sock,*arguments[1:])
-                except OSError as filenotfounderror:
-                    print(filenotfounderror.strerror)
+                except Exception as exception:
+                    print(exception)
 
 def configure_socket(sock,maxtimeout):
     timeval = struct.pack('LL',0,maxtimeout)

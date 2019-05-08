@@ -53,6 +53,8 @@ def write(sock,*args,**kwargs):
                 
         except FileNotFoundError as filenotfounderror:
             print (filenotfounderror)
+        except UnicodeDecodeError as decodeerror:
+            print(decodeerror)
         
 def read(sock,*args,**kwargs):
     
@@ -60,33 +62,38 @@ def read(sock,*args,**kwargs):
         print("Please introduce the arguments in the correct format -> READ 'filename'")
     else:
     
-        file_name=args[0]
+        try:
+
+            file_name=args[0]
+            
+            last_packet=sendRRQWRQ(1,file_name,sock)
         
-        last_packet=sendRRQWRQ(1,file_name,sock)
-    
 
-        while True:
-                                    
-            packet_data = sock.recv(516)                   
-                            
-            code=unpack_packetcode(packet_data)
+            while True:
+                                        
+                packet_data = sock.recv(516)                   
+                                
+                code=unpack_packetcode(packet_data)
 
-            if(code==3):  
+                if(code==3):  
 
-                unpacked_data = unpack_data(packet_data)
-                
-                with open(f'TCP_CLIENT/{file_name}','ba',) as file_write: 
-                    file_write.write(unpacked_data[2])
-                        
-                if(len(unpacked_data[2])<512):
-        
-                    break
-                                            
-            elif(code==5):                 
-                        
-                unpack_err(packet_data)
+                    unpacked_data = unpack_data(packet_data)
                     
-                break
+                    with open(f'TCP_CLIENT/{file_name}','ba',) as file_write: 
+                        file_write.write(unpacked_data[2])
+                            
+                    if(len(unpacked_data[2])<512):
+            
+                        break
+                                                
+                elif(code==5):                 
+                            
+                    unpack_err(packet_data)
+                        
+                    break
+                    
+        except UnicodeDecodeError as decodeerror:
+            print(decodeerror)
               
 def end_program(sock,*args,**kwargs):
     print("Bye,good to see you")
@@ -108,10 +115,15 @@ def main(*args,**kwargs):
                 while True:                  
                     command = input('TFTP@TCP> ')
                     arguments = command.split() + sys.argv[1:]
-                    functions[arguments[0]](sock,*arguments[1:])
 
-                    if arguments[0]=='quit':
-                        break
+                    try:
+                        functions[arguments[0].lower()](sock,*arguments[1:])
+
+                        if arguments[0]=='quit':
+                            break
+
+                    except Exception as exception:
+                        print(exception)
 
         
 

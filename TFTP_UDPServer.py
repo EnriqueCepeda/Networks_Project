@@ -143,6 +143,9 @@ def write(sock,packet,client):
         last_message=send_err(message,sock,client)
         with open('UDP_SERVER/log.txt','a') as logfile:    
             logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: read {wrq[1]} , status: {message}\n")
+
+    except UnicodeDecodeError as decodeerror:
+        print(decodeerror)
     
 
 

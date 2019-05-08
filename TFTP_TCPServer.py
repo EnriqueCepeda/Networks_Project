@@ -49,6 +49,9 @@ def read(sock,msg,client):
             logfile.write("\n")
 
         send_err(message,sock,1)
+    
+    except UnicodeDecodeError as decodeerror:
+        print(decodeerror)
 
    
 def write(sock,msg,client):
@@ -97,6 +100,9 @@ def write(sock,msg,client):
             logfile.write("\n")
 
         send_err(message,sock,2)
+    
+    except UnicodeDecodeError as decodeerror:
+        print(decodeerror)
         
         
 

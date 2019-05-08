@@ -43,14 +43,17 @@ class Reliability_tests(unittest.TestCase):
                     
                 except socket.error:
                     packets = packets +1
-                    print("error")
 
     def test_nonexistingFile(self):
         print("-------------------TEST EXISTING FILE-------------------")
         print("--------------------RELIABILITY TEST-------------------")
         packets=0
 
-        file_name="log1.txt" 
+
+        file_name = ''.join(random.choice(string.ascii_letters) for i in range(15))
+        #Generation of random name
+        #This file must not exist in UDP_SERVER directory
+
         max_packets=4
 
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
@@ -70,7 +73,6 @@ class Reliability_tests(unittest.TestCase):
                     
                 except socket.error:
                     packets = packets +1
-                    print("error")
 
     def test_lostACK(self):
         print("-------------------TEST LOST ACKNOWLEDGMENT-------------------")
