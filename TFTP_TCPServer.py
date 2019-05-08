@@ -49,7 +49,7 @@ def read(sock,msg,client):
             logfile.write(f"host: {client[0]} , port: {client[1]} , time: {time.asctime()} , request: READ {rrq[1].decode()} , status: {message} ")
             logfile.write("\n")
 
-        send_err(message,sock,client)
+        send_err(message,sock,1)
 
    
 def write(sock,msg,client):
@@ -97,7 +97,7 @@ def write(sock,msg,client):
         
             logfile.write("\n")
 
-        send_err(message,sock,client)
+        send_err(message,sock,2)
         
         
 
@@ -170,9 +170,9 @@ def main(*args,**kwargs):
       print('Fail creating the socket, there is something wrong')
       sys.exit(1)    
     
-def send_err(message,sock,client):
-    packed_err = struct.pack(f'!2H{len(message)}sB',5,1,message.encode(),0)
-    sock.sendto(packed_err,client)
+def send_err(message,sock,code):
+    packed_err = struct.pack(f'!2H{len(message)}sB',5,code,message.encode(),0)
+    sock.send(packed_err)
     return packed_err   
         
 def send_data(sock,block,data):
