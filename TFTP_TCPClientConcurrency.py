@@ -9,15 +9,13 @@ import time
 import os
 import threading  
         
-def read (port,ip,n_client, *args,**kwargs):
+def read (port,ip,n_client,file_name, *args,**kwargs):
     
     print("Client {} reading".format(n_client))
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:   
 
         sock.connect((port,int(ip)))
-
-        file_name="co.text"
        
         last_packet=sendRRQWRQ(1,file_name,sock)
                 
@@ -55,9 +53,13 @@ def main(*args,**kwargs):
 
     start_time=time.time()   
 
+    filenames=["50MB","co.txt","data.txt","hola.txt","log.txt"]
+
     for client in range (n_client):
+    
+        file_name=filenames[client]
        
-        client = threading.Thread(target=read,args=(sys.argv[2],sys.argv[4],client + 1))
+        client = threading.Thread(target=read,args=(sys.argv[2],sys.argv[4],client + 1,file_name))
         
         client.start()
    

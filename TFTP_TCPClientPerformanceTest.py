@@ -110,10 +110,10 @@ def main(*args,**kwargs):
                     command = input('TFTP@TCP> ')
                     arguments = command.split() + sys.argv[1:]
 
-                    time_start_read=time.time()
+                    time_start=time.time()
                     functions[arguments[0]](sock,*arguments[1:])
-                    time_end_write=time.time()
-                    print(f"Time taken by {arguments[0].upper()} mode is : {round((time_end_read-time_start_read)*1000,3)} miliseconds")   
+                    time_end=time.time()
+                    print(f"Time taken by {arguments[0].upper()} mode is : {round((time_end-time_start)*1000,3)} miliseconds")   
 
                     if arguments[0]=='quit':
                         break
