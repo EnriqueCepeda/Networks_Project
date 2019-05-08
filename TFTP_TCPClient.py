@@ -88,9 +88,7 @@ def read(sock,*args,**kwargs):
                 unpack_err(packet_data)
                     
                 break
-                
-                    
-
+              
 def end_program(sock,*args,**kwargs):
     print("Bye,good to see you")
     sock.close()
@@ -108,7 +106,7 @@ def main(*args,**kwargs):
     else:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.connect((sys.argv[2],int(sys.argv[4])))
-                while True:
+                while True:                  
                     command = input('TFTP@TCP> ')
                     arguments = command.split() + sys.argv[1:]
                     functions[arguments[0]](sock,*arguments[1:])

@@ -21,17 +21,17 @@ class Reliability_tests(unittest.TestCase):
         self.file_name_read="rrq.txt"
         self.file_name_write="filedoesntexists.txt"
         self.server_proccess = subprocess.Popen(self.args)
+        print("port=",self.port)
+        print("ip=",self.ip)
+        print("Server=",self.args)
+        print("file=",self.file_name_read)
         
         
 
     def test_nofile(self):
         print("\n")
         print("-------------------TEST NO FILE-------------------")
-        print("port=",self.port)
-        print("ip=",self.ip)
-        print("Server=",self.args)
-        print("file=",self.file_name_read)
-        time.sleep(0.2)
+
         with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
             sock.connect((self.ip,int(self.port)))
             packet = tftpclient.sendRRQWRQ(1,self.file_name_read, sock)
@@ -46,11 +46,6 @@ class Reliability_tests(unittest.TestCase):
     def test_existingfile(self):
         print("\n")
         print("-------------------TEST EXISTING FILE-------------------")
-        print("port=",self.port)
-        print("ip=",self.ip)
-        print("Server=",self.args)
-        print("file=",self.file_name_write)
-        time.sleep(0.2)
         
         with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
     

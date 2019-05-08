@@ -7,128 +7,131 @@ import sys
 def write(sock,*args,**kwargs):
 
     if(len(args)!=5):
-        raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
+        print(args)
+        print("Please introduce the arguments in the correct format -> READ 'filename'")
+    else:
 
-    file_name=args[0]
-    ip=args[2]
-    port=args[4]
+        file_name=args[0]
+        ip=args[2]
+        port=args[4]
 
-    file_content=''
-    count=0
-    continue_ack=0
-    max_continue_ack=10
-    file_iteration_block=1
+        file_content=''
+        count=0
+        continue_ack=0
+        max_continue_ack=10
+        file_iteration_block=1
 
-    recieved=False
-    last_message=False
+        recieved=False
+        last_message=False
 
-    with open(f'UDP_CLIENT/{file_name}','r') as writefile:
-        file_content = writefile.read().encode()  
+        with open(f'UDP_CLIENT/{file_name}','r') as writefile:
+            file_content = writefile.read().encode()  
 
-    last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
+        last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
+        
+        while continue_ack<max_continue_ack:
     
-    while continue_ack<max_continue_ack:
-  
-        if not recieved:
+            if not recieved:
 
-            try:
-                msg,cliente = sock.recvfrom(516)
-                continue_ack=0
-            except socket.error: 
-                recieved=True
-                continue_ack = continue_ack + 1
-                continue
+                try:
+                    msg,cliente = sock.recvfrom(516)
+                    continue_ack=0
+                except socket.error: 
+                    recieved=True
+                    continue_ack = continue_ack + 1
+                    continue
 
-            if last_message: 
-                break
+                if last_message: 
+                    break
 
-            packet_code = unpack_packetcode(msg)
+                packet_code = unpack_packetcode(msg)
 
-            if(packet_code==4):
+                if(packet_code==4):
 
-                ack = unpack_ack(msg)
+                    ack = unpack_ack(msg)
 
-                sent_bytes = file_content[count : (file_iteration_block)*512]
+                    sent_bytes = file_content[count : (file_iteration_block)*512]
 
-                file_iteration_block = file_iteration_block + 1
+                    file_iteration_block = file_iteration_block + 1
 
-                count = count + len(sent_bytes)
+                    count = count + len(sent_bytes)
 
-                last_packet = send_data(cliente,sock,ack[1],sent_bytes)
+                    last_packet = send_data(cliente,sock,ack[1],sent_bytes)
 
-                if( len ( sent_bytes ) < 512):
-                    last_message=True
-            
-            elif(packet_code==5):
+                    if( len ( sent_bytes ) < 512):
+                        last_message=True
                 
-                unpack_err(msg)
-                break
-                
-                
-        else:
-            sock.sendto(last_packet,(ip,int(port)))
-            recieved=False
+                elif(packet_code==5):
+                    
+                    unpack_err(msg)
+                    break
+                    
+                    
+            else:
+                sock.sendto(last_packet,(ip,int(port)))
+                recieved=False
 
         
 def read(sock,*args,**kwargs):
 
     if(len(args)!=5):
-        raise Exception("Please introduce the arguments in the correct format -> READ 'filename'")
+        print("Please introduce the arguments in the correct format -> READ 'filename'")
+    else:
 
-    file_name=args[0]
-    ip=args[2]
-    port=args[4]
-    file_content=''
-    continue_ack=0
-    max_continue_ack=10
+        file_name=args[0]
+        ip=args[2]
+        port=args[4]
+        file_content=''
+        continue_ack=0
+        max_continue_ack=10
 
-    acknowledgment=False
+        acknowledgment=False
 
-    last_packet = sendRRQWRQ(1,file_name,ip,port,sock)
+        last_packet = sendRRQWRQ(1,file_name,ip,port,sock)
 
-    while continue_ack<max_continue_ack:
-                    
-        if not acknowledgment:
+        while continue_ack<max_continue_ack:
+                        
+            if not acknowledgment:
+                
+                try:
+                    msg,cliente = sock.recvfrom(516)
+                    continue_ack=0
+
+                except socket.error:  
+                    continue_ack = continue_ack +1
+                    acknowledgment=True
+                    continue
+
+                packet_code = unpack_packetcode(msg)
             
-            try:
-                msg,cliente = sock.recvfrom(516)
-                continue_ack=0
+                if(packet_code == 3):
 
-            except socket.error:  
-                continue_ack = continue_ack +1
-                acknowledgment=True
-                continue
+                    data = unpack_data(msg)
 
-            packet_code = unpack_packetcode(msg)
-        
-            if(packet_code == 3):
+                    file_content = file_content + data[2].decode()
 
-                data = unpack_data(msg)
+                    last_packet = send_ack(cliente, sock, data[1])
 
-                file_content = file_content + data[2].decode()
+                    if ( len(msg) < 516 ):
+                            
+                        with open(f'UDP_CLIENT/{file_name}','w') as f:
+                            f.write(file_content)
+                            
+                        break
 
-                last_packet = send_ack(cliente, sock, data[1])
-
-                if ( len(msg) < 516 ):
-                        
-                    with open(f'UDP_CLIENT/{file_name}','w') as f:
-                        f.write(file_content)
-                        
+                
+                elif(packet_code==5):
+                    
+                    unpack_err(msg)
                     break
 
-            
-            elif(packet_code==5):
+            else:
+                sock.sendto(last_packet, (ip,int(port)) )   
+                acknowledgment=False
                 
-                unpack_err(msg)
-                break
-
-        else:
-            sock.sendto(last_packet, (ip,int(port)) )   
-            acknowledgment=False
-            
 
 
-    
+        
 
 
 def end_program(sock,*args,**kwargs):
@@ -145,20 +148,21 @@ def main(*args,**kwargs):
     print(len(sys.argv))
 
     if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or len(sys.argv) != 5):
-        print(len(sys.argv))
-        raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        print("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -s 'server direction' -p 'port number' ")
+    else:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
 
-        configure_socket(sock,999999)
+            configure_socket(sock,999999)
 
-        while True:
-            
-            command = input('TFTP@UDP> ')
-            arguments = command.split() + sys.argv[1:]
-            try:
-                functions[arguments[0].lower()](sock,*arguments[1:])
-            except OSError as filenotfounderror:
-                print(filenotfounderror.strerror)
+            while True:
+                
+                command = input('TFTP@UDP> ')
+                arguments = command.split() + sys.argv[1:]
+                print(*arguments[1:])
+                try:
+                    functions[arguments[0].lower()](sock,*arguments[1:])
+                except OSError as filenotfounderror:
+                    print(filenotfounderror.strerror)
 
 def configure_socket(sock,maxtimeout):
     timeval = struct.pack('LL',0,maxtimeout)
@@ -204,5 +208,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        print(str(e))
+        print(e)
 

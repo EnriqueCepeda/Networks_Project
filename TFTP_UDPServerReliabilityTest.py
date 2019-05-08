@@ -31,7 +31,7 @@ class Reliability_tests(unittest.TestCase):
             tftpclient.configure_socket(sock,999999)
 
             while packets < max_packets:
-
+                #WRITE
                 last_packet=tftpclient.sendRRQWRQ(2,file_name,self.ip,self.port, sock)
 
                 try:
@@ -58,7 +58,7 @@ class Reliability_tests(unittest.TestCase):
             tftpclient.configure_socket(sock,999999)
 
             while packets < max_packets:
-
+                #READ
                 last_packet=tftpclient.sendRRQWRQ(1,file_name,self.ip,self.port, sock)
 
                 try:
@@ -89,7 +89,7 @@ class Reliability_tests(unittest.TestCase):
             while True:   
 
                 try:
-
+                    #READ
                     last_packet=tftpclient.sendRRQWRQ(1,file_name,self.ip,self.port, sock)
                     message,client = sock.recvfrom(516)
                     break
@@ -132,7 +132,7 @@ class Reliability_tests(unittest.TestCase):
             while True:   
 
                 try:
-
+                    #WRITE
                     last_packet=tftpclient.sendRRQWRQ(2,file_name,self.ip,self.port, sock)
                     message,client = sock.recvfrom(516)
                     break

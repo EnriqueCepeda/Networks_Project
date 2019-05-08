@@ -139,6 +139,7 @@ def write(sock,packet,client):
             writefile.write(file_content)
 
     except OSError as e:
+        print(e)
         message='File already exists'
         last_message=send_err(message,sock,client)
         with open('UDP_SERVER/log.txt','a') as logfile:    
@@ -150,27 +151,35 @@ def write(sock,packet,client):
 def main(*args,**kwargs):
 
     if(sys.argv[1]!= '-p' ):
-        print("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -p 'port number' ")
-    else:
+            raise Exception("Introduce the arguments in the correct format -> python3 TFTP_UDPClient.py -p 'port number' ")
 
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            
-            configure_socket(sock,sys.argv[2],999999)
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        
+        configure_socket(sock,sys.argv[2],999999)
 
-            while True:
+        while True:
 
-                try:
+            try:
 
-                    msg, client =sock.recvfrom(516)
+                msg, client =sock.recvfrom(516)
 
-                    code = unpack_packetcode(msg)
-                    
-                    if(code==1):
-                        read(sock,msg,client)
-                    if(code==2):
-                        write(sock,msg,client)
-                except IOError:
-                    pass
+                code = unpack_packetcode(msg)
+                
+                if(code==1):
+                    time_start_write=time.time()  
+                    read(sock,msg,client)
+                    time_end_write=time.time()
+                    print(f"Time taken by READ mode is : {round((time_end_write-time_start_write)*1000,3)} miliseconds")
+
+                if(code==2):
+
+                    time_start_write=time.time()  
+                    write(sock,msg,client)
+                    time_end_write=time.time()
+                    print(f"Time taken by WRITE mode is : {round((time_end_write-time_start_write)*1000,3)} miliseconds")
+
+            except IOError:
+                pass
 
 
 def configure_socket(sock,port,maxtimeout):
