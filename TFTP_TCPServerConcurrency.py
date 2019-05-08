@@ -3,7 +3,6 @@ import struct
 import sys
 import socket
 import traceback
-import io 
 import _thread
 import time
 import threading
@@ -56,8 +55,8 @@ def main(*args,**kwargs):
             port=int(sys.argv[2])
             sock.bind(('',port))
             sock.listen(5)
-            
             i=1
+            
             while True:     
                           
                 child_socket, client= sock.accept()

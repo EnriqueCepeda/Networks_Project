@@ -51,9 +51,8 @@ def write(sock,*args,**kwargs):
                                     
                     unpack_err(ack_packet)
                 
-        except FileNotFoundError:
-            
-            print("This file doesn't exist")
+        except FileNotFoundError as filenotfounderror:
+            print (filenotfounderror)
         
 def read(sock,*args,**kwargs):
     

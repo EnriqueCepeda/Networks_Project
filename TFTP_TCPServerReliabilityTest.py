@@ -1,11 +1,7 @@
 
 import unittest
-import os
-import signal
 import subprocess
 import socket
-import sys
-import os
 import time
 import TFTP_TCPClient as tftpclient
 from random import choices

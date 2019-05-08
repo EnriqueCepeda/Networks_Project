@@ -4,14 +4,12 @@ import socket
 import sys
 import struct
 import traceback
-import io
 import time
 import os
-from pathlib import Path
+
 
 
 def write(sock,*args,**kwargs):
-    time_start_write=time.time()
     if(len(args)!=5):
         print("Please introduce the arguments in the correct format -> WRITE 'filename'")
     else:
@@ -50,18 +48,13 @@ def write(sock,*args,**kwargs):
                 elif code==5:             
                                     
                     unpack_err(ack_packet)
-                time_end_write=time.time()
-                print(f"Time taken by WRITE mode is : {round((time_end_write-time_start_write)*1000,3)} miliseconds")
-    
+
                 
-        except FileNotFoundError:
-            
-            print("This file doesn't exist")
-            time_end_write=time.time()
-            print(f"Time taken by WRITE mode is : {round((time_end_write-time_start_write)*1000,3)} miliseconds")
-        
+        except FileNotFoundError as filenotfounderror:
+            print(filenotfounderror)
+
 def read(sock,*args,**kwargs):
-    time_start_read=time.time()
+
     if(len(args)!=5):
         print("Please introduce the arguments in the correct format -> READ 'filename'")
     else:
@@ -93,8 +86,7 @@ def read(sock,*args,**kwargs):
                 unpack_err(packet_data)
                     
                 break
-        time_end_read=time.time()
-        print(f"Time taken by READ mode is : {round((time_end_read-time_start_read)*1000,3)} miliseconds")        
+      
                     
 
 def end_program(sock,*args,**kwargs):
@@ -117,7 +109,11 @@ def main(*args,**kwargs):
                 while True:
                     command = input('TFTP@TCP> ')
                     arguments = command.split() + sys.argv[1:]
+
+                    time_start_read=time.time()
                     functions[arguments[0]](sock,*arguments[1:])
+                    time_end_write=time.time()
+                    print(f"Time taken by {arguments[0].upper()} mode is : {round((time_end_read-time_start_read)*1000,3)} miliseconds")   
 
                     if arguments[0]=='quit':
                         break

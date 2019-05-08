@@ -6,6 +6,7 @@ import time
 import TFTP_UDPClient as tftpclient
 import random
 import string
+import pdb
 
 
 class Reliability_tests(unittest.TestCase):
@@ -14,29 +15,23 @@ class Reliability_tests(unittest.TestCase):
         print("-------------------SETUP TEST-------------------")
         self.port = 53011
         self.ip = "127.0.0.1"
-        self.args = ["python3","TFTP_UDPServer.py","-p", f"{self.port}"]
-        self.server_proccess = subprocess.Popen(self.args)
-
 
     def test_nonexistingFile(self):
-        print("-------------------TEST EXISTING FILE-------------------")
+        print("-------------------TEST NON EXISTING FILE-------------------")
         print("--------------------RELIABILITY TEST-------------------")
-        packets=0
 
         file_name= ''.join(random.choice(string.ascii_letters) for i in range(15))
 
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
             
             tftpclient.configure_socket(sock,999999)
-            time_start_write=time.time()  
-            tftpclient.read(sock,["-s",self.ip,"-p",self.port])
-            print(time_start_write)
-            self.assertTrue(time_start_write<100)
-
-   
+            args=[file_name,"-s",self.ip,"-p",self.port] 
+            time_start_write=time.time() 
+            tftpclient.write(sock,*args)
+            time_end_write=time.time() 
+            self.assertTrue(time_start_write-time_end_write<2)
 
     def tearDown(self):
-        self.server_proccess.terminate()
         print("-------------------FINISH TEST-------------------")
 
 if __name__ == "__main__":

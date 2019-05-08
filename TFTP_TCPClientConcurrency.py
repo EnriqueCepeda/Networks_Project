@@ -9,9 +9,9 @@ import time
 import os
 import threading  
         
-def read (port,ip,i, *args,**kwargs):
+def read (port,ip,n_client, *args,**kwargs):
     
-    print("Client {} reading".format(i+1))
+    print("Client {} reading".format(n_client))
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:   
 
@@ -21,7 +21,8 @@ def read (port,ip,i, *args,**kwargs):
        
         last_packet=sendRRQWRQ(1,file_name,sock)
                 
-        with open(f'TCP_CLIENT/{file_name}','wb',) as file_write:        
+        with open(f'TCP_CLIENT/{file_name}','wb',) as file_write: 
+
             while True:
                                         
                 packet_data = sock.recv(516)                   
@@ -43,28 +44,29 @@ def read (port,ip,i, *args,**kwargs):
                     unpack_err(packet_data)
                         
                     break
-        print("Client {} finishing reading".format(i+1))    
-        sock.close()
+        print("Client {} finishing reading".format(n_client))    
+
 
 
 def main(*args,**kwargs):
     if(sys.argv[1]!='-s'or sys.argv[3]!='-p' or len(sys.argv) != 6 ):
         raise Exception("Introduce the arguments in the correct format -> python3 TFTP_TCPClient.py -s 'server direction' -p 'port number' 'number of clients' ")
-    i=0
     n_client=int(sys.argv[5])
-    for i in range(i,n_client):
+
+    start_time=time.time()   
+
+    for client in range (n_client):
        
-        client = threading.Thread(target=read,args=(sys.argv[2],sys.argv[4],i))
+        client = threading.Thread(target=read,args=(sys.argv[2],sys.argv[4],client + 1))
         
         client.start()
    
-    i=0
-    for i in range(i,n_client):
+    for client in range (n_client):
 
         client.join()
 
-
-        
+    end_time=time.time()
+    print(f"Time taken by READ mode is : {round((end_time-start_time)*1000,3)} miliseconds")
             
 
 def sendRRQWRQ(code,file_name,sock,encode_mode='netascii'):

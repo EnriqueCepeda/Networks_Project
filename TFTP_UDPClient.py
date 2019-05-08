@@ -7,7 +7,6 @@ import sys
 def write(sock,*args,**kwargs):
 
     if(len(args)!=5):
-        print(args)
         print("Please introduce the arguments in the correct format -> READ 'filename'")
     else:
 
@@ -21,55 +20,64 @@ def write(sock,*args,**kwargs):
         max_continue_ack=10
         file_iteration_block=1
 
+        error=False
         recieved=False
         last_message=False
 
-        with open(f'UDP_CLIENT/{file_name}','r') as writefile:
-            file_content = writefile.read().encode()  
+        try:
+            
+            with open(f'UDP_CLIENT/{file_name}','r') as writefile:
+                file_content = writefile.read().encode()  
 
-        last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
+        except FileNotFoundError as filenotfounderror:
+            print(filenotfounderror)
+            error=True
+
+        if error==False:
+
+            last_packet= sendRRQWRQ(2,file_name,ip,port,sock)
+            
+            while continue_ack<max_continue_ack:
         
-        while continue_ack<max_continue_ack:
-    
-            if not recieved:
+                if not recieved:
 
-                try:
-                    msg,cliente = sock.recvfrom(516)
-                    continue_ack=0
-                except socket.error: 
-                    recieved=True
-                    continue_ack = continue_ack + 1
-                    continue
+                    try:
+                        msg,cliente = sock.recvfrom(516)
+                        continue_ack=0
+                    except socket.error: 
+                        recieved=True
+                        continue_ack = continue_ack + 1
+                        continue
 
-                if last_message: 
-                    break
+                    if last_message: 
+                        break
 
-                packet_code = unpack_packetcode(msg)
+                    packet_code = unpack_packetcode(msg)
 
-                if(packet_code==4):
+                    if(packet_code==4):
 
-                    ack = unpack_ack(msg)
+                        ack = unpack_ack(msg)
 
-                    sent_bytes = file_content[count : (file_iteration_block)*512]
+                        sent_bytes = file_content[count : (file_iteration_block)*512]
 
-                    file_iteration_block = file_iteration_block + 1
+                        file_iteration_block = file_iteration_block + 1
 
-                    count = count + len(sent_bytes)
+                        count = count + len(sent_bytes)
 
-                    last_packet = send_data(cliente,sock,ack[1],sent_bytes)
+                        last_packet = send_data(cliente,sock,ack[1],sent_bytes)
 
-                    if( len ( sent_bytes ) < 512):
-                        last_message=True
-                
-                elif(packet_code==5):
+                        if( len ( sent_bytes ) < 512):
+                            last_message=True
                     
-                    unpack_err(msg)
-                    break
-                    
-                    
-            else:
-                sock.sendto(last_packet,(ip,int(port)))
-                recieved=False
+                    elif(packet_code==5):
+                        
+                        unpack_err(msg)
+                        break
+                        
+                        
+                else:
+                    sock.sendto(last_packet,(ip,int(port)))
+                    recieved=False
 
         
 def read(sock,*args,**kwargs):
@@ -158,8 +166,9 @@ def main(*args,**kwargs):
                 
                 command = input('TFTP@UDP> ')
                 arguments = command.split() + sys.argv[1:]
-                print(*arguments[1:])
+                print(arguments[1:])
                 try:
+
                     functions[arguments[0].lower()](sock,*arguments[1:])
                 except OSError as filenotfounderror:
                     print(filenotfounderror.strerror)

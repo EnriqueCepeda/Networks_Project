@@ -3,7 +3,6 @@ import struct
 import sys
 import socket
 import traceback
-import io 
 import _thread
 import time
 import threading
