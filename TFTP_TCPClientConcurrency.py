@@ -53,7 +53,8 @@ def main(*args,**kwargs):
 
     start_time=time.time()   
 
-    filenames=["50MB","co.txt","data.txt","hola.txt","log.txt"]
+    filenames=["50MB","co.text","data.txt","hola.txt","log.txt"]
+    clients=[]
 
     for client in range (n_client):
     
@@ -62,8 +63,9 @@ def main(*args,**kwargs):
         client = threading.Thread(target=read,args=(sys.argv[2],sys.argv[4],client + 1,file_name))
         
         client.start()
+        clients.append(client)
    
-    for client in range (n_client):
+    for client in clients:
 
         client.join()
 
