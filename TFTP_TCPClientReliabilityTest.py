@@ -3,7 +3,7 @@ import signal
 import subprocess
 import socket
 import time
-import TFTP_UDPClient as tftpclient
+import TFTP_TCPClient as tftpclient
 import random
 import string
 import pdb
@@ -22,9 +22,8 @@ class Reliability_tests(unittest.TestCase):
 
         file_name= ''.join(random.choice(string.ascii_letters) for i in range(15))
 
-        with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
+        with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
             
-            tftpclient.configure_socket(sock,999999)
             args=[file_name,"-s",self.ip,"-p",self.port] 
             time_start_write=time.time() 
 
