@@ -117,14 +117,14 @@ def client_handle(child_sock,client,n):
             time_start_read=time.time()                                       
             read(child_sock,msg,client)
             time_end_read=time.time()
-            print(f"Time taken by READ mode is : {round((time_end_read-time_start_read)*1000,3)} miliseconds")
+            print(f"Time taken by READ mode is : {round((time_end_read-time_start_read)*1000,3)} milliseconds")
             
         if(code==2):
             
             time_start_write=time.time()                                 
             write(child_sock,msg,client)            
             time_end_write=time.time()
-            print(f"Time taken by WRITE mode is : {round((time_end_write-time_start_write)*1000,3)} miliseconds")
+            print(f"Time taken by WRITE mode is : {round((time_end_write-time_start_write)*1000,3)} milliseconds")
                 
     print("Client {} disconnected".format(client))
 

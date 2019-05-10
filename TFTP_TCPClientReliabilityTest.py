@@ -25,10 +25,11 @@ class Reliability_tests(unittest.TestCase):
         with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
             
             args=[file_name,"-s",self.ip,"-p",self.port] 
-            time_start_write=time.time() 
+            time_start_write=time.time()    
 
             tftpclient.write(sock,*args)
-            
+
+ 
             time_end_write=time.time() 
 
             self.assertTrue(time_start_write-time_end_write<0.1)

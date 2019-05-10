@@ -113,7 +113,7 @@ def main(*args,**kwargs):
                     time_start=time.time()
                     functions[arguments[0]](sock,*arguments[1:])
                     time_end=time.time()
-                    print(f"Time taken by {arguments[0].upper()} mode is : {round((time_end-time_start)*1000,3)} miliseconds")   
+                    print(f"Time taken by {arguments[0].upper()} mode is : {round((time_end-time_start)*1000,3)} milliseconds")   
 
                     if arguments[0]=='quit':
                         break

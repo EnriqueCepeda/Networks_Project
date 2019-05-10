@@ -82,7 +82,7 @@ class Reliability_tests(unittest.TestCase):
         maxpackets = 4
         timeout=0
 
-        file_name="ack.txt" #This file must exist in UDP_SERVER directory and must be bigger than 512 bytes
+        file_name="log.txt" #This file must exist in UDP_SERVER directory and must be bigger than 512 bytes
 
         with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as sock:
 

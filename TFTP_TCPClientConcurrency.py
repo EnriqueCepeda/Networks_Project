@@ -53,7 +53,7 @@ def main(*args,**kwargs):
 
     start_time=time.time()   
 
-    filenames=["50MB","co.text","data.txt","hola.txt","log.txt"]
+    filenames=["10MB.txt","10MB.txt","10MB.txt","10MB.txt","10MB.txt","10MB.txt","10MB.txt","10MB.txt"]
     clients=[]
 
     for client in range (n_client):
@@ -70,7 +70,7 @@ def main(*args,**kwargs):
         client.join()
 
     end_time=time.time()
-    print(f"Time taken by READ mode is : {round((end_time-start_time)*1000,3)} miliseconds")
+    print(f"Time taken by READ mode is : {round((end_time-start_time)*1000,3)} milliseconds")
             
 
 def sendRRQWRQ(code,file_name,sock,encode_mode='netascii'):
